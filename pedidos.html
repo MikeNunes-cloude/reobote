@@ -1,0 +1,316 @@
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#2E0A2B" />
+<meta property="og:title" content="Reobote — Pedidos" />
+<meta property="og:description" content="Faça seu pedido de reposição direto com a fábrica." />
+<link rel="apple-touch-icon" href="assets/icon-192.png" />
+<link rel="icon" href="assets/icon-192.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+<title>Pedidos Reobote</title>
+
+<style>
+:root{
+  --cream:#F7EFE8; --cream-2:#FFF9F4; --white:#fff;
+  --plum:#2E0A2B; --plum-2:#4A1846; --plum-3:#6E3F68;
+  --orange:#E8924C; --orange-deep:#C4712F; --orange-tint:#FBEDDF;
+  --line:#E8DCD2; --muted:#8A7480; --ok:#3FA372; --bad:#D2445F;
+  --safe-bottom:env(safe-area-inset-bottom,0px); --safe-top:env(safe-area-inset-top,0px);
+  --serif:"Playfair Display",Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--cream);color:var(--plum);font-family:var(--sans);
+  -webkit-font-smoothing:antialiased}
+body{max-width:560px;margin:0 auto;min-height:100vh;position:relative;padding-bottom:120px}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;font-size:inherit}
+input,select,textarea{font-family:inherit;font-size:16px}
+h1,h2,h3{margin:0;letter-spacing:-.02em}
+.mono{font-variant-numeric:tabular-nums}
+.hide{display:none !important}
+
+/* ---------- topo ---------- */
+.top{background:var(--plum);color:var(--cream);padding:calc(var(--safe-top) + 22px) 20px 30px;
+  border-radius:0 0 28px 28px;position:relative;overflow:hidden}
+.top::after{content:"";position:absolute;right:-48px;top:-48px;width:180px;height:180px;border-radius:50%;
+  background:radial-gradient(circle,rgba(232,146,76,.28),transparent 66%)}
+.wm{font-family:var(--serif);font-size:29px;font-weight:600;display:flex;align-items:baseline;position:relative;z-index:1}
+.wm .om{display:inline-grid;place-items:center;width:26px;height:26px;transform:translateY(2px);margin:0 1px}
+.tagline{font-size:8.5px;font-weight:800;letter-spacing:.32em;text-transform:uppercase;color:rgba(247,239,232,.5);
+  margin-top:5px;position:relative;z-index:1}
+.top h1{font-family:var(--serif);font-size:23px;font-weight:600;margin-top:20px;position:relative;z-index:1;line-height:1.25}
+.top p{font-size:13px;color:rgba(247,239,232,.66);margin:8px 0 0;line-height:1.55;position:relative;z-index:1;max-width:88%}
+
+/* ---------- categorias ---------- */
+.cats{display:flex;gap:8px;overflow-x:auto;padding:18px 16px 4px;scrollbar-width:none}
+.cats::-webkit-scrollbar{display:none}
+.cat{flex:none;display:flex;align-items:center;gap:7px;padding:10px 15px;border-radius:14px;background:var(--white);
+  border:1px solid var(--line);font-size:13px;font-weight:700;color:var(--muted);transition:.16s;white-space:nowrap}
+.cat.on{background:var(--plum);border-color:var(--plum);color:var(--cream)}
+
+main{padding:12px 16px 0}
+.sec{font-family:var(--serif);font-size:19px;font-weight:600;margin:22px 2px 12px}
+
+/* ---------- produtos ---------- */
+.prod{display:flex;gap:11px;align-items:center;background:var(--white);border:1px solid var(--line);
+  border-radius:20px;padding:12px;margin-bottom:10px;transition:.16s}
+.prod.in{border-color:var(--orange);box-shadow:0 6px 18px -12px var(--orange)}
+.prod .th{width:50px;height:50px;border-radius:15px;flex:none;display:grid;place-items:center;
+  background:var(--orange-tint);border:1px solid rgba(232,146,76,.22)}
+.prod .bd{flex:1;min-width:0;padding-right:2px}
+.prod .nm{font-size:14px;font-weight:700;letter-spacing:-.015em;line-height:1.25}
+.prod .ds{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.35;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.prod .pr{font-size:14.5px;font-weight:800;color:var(--orange-deep);margin-top:5px;white-space:nowrap}
+.prod .pr small{font-size:10.5px;color:var(--muted);font-weight:600}
+.stp{display:flex;align-items:center;gap:6px;flex:none}
+.stp button{width:31px;height:31px;border-radius:10px;background:var(--cream);border:1px solid var(--line);
+  display:grid;place-items:center;transition:.14s}
+.stp button:active{transform:scale(.9)}
+.stp button.add{background:var(--orange);border-color:var(--orange);color:#fff}
+.stp .q{font-size:14.5px;font-weight:800;min-width:16px;text-align:center}
+
+/* ---------- carrinho ---------- */
+.bar{position:fixed;bottom:0;left:50%;transform:translate(-50%,120%);width:100%;max-width:560px;z-index:40;
+  background:var(--plum);color:var(--cream);padding:15px 18px calc(var(--safe-bottom) + 15px);
+  border-radius:24px 24px 0 0;display:flex;align-items:center;gap:14px;transition:transform .32s cubic-bezier(.32,.72,0,1);
+  box-shadow:0 -10px 34px -14px rgba(46,10,43,.5)}
+.bar.on{transform:translate(-50%,0)}
+.bar .bi{flex:1;min-width:0}
+.bar .bl{font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:rgba(247,239,232,.52);font-weight:800}
+.bar .bv{font-size:20px;font-weight:800;margin-top:3px;letter-spacing:-.02em}
+.bar .go{background:var(--orange);color:#33170A;padding:14px 20px;border-radius:15px;font-size:14px;font-weight:800;
+  display:flex;align-items:center;gap:7px}
+
+/* ---------- form ---------- */
+.f{margin-bottom:14px}
+.f label{display:block;font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.11em;margin-bottom:7px}
+.f input,.f select,.f textarea{width:100%;padding:14px;border-radius:15px;background:var(--white);
+  border:1px solid var(--line);color:var(--plum);outline:none;transition:.15s;-webkit-appearance:none}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:var(--orange)}
+.f textarea{resize:vertical;min-height:74px;line-height:1.5}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{display:flex;align-items:center;justify-content:center;gap:9px;padding:16px;border-radius:16px;
+  font-size:14.5px;font-weight:800;width:100%;background:var(--orange);color:#33170A;transition:.15s;
+  box-shadow:0 10px 24px -12px var(--orange)}
+.btn:active{transform:scale(.985)}
+.btn.ghost{background:var(--white);border:1px solid var(--line);color:var(--plum);box-shadow:none}
+.btn.plum{background:var(--plum);color:var(--cream);box-shadow:none}
+
+/* ---------- sheet ---------- */
+.ov{position:fixed;inset:0;background:rgba(46,10,43,.5);backdrop-filter:blur(3px);z-index:50;opacity:0;
+  pointer-events:none;transition:.24s}
+.ov.on{opacity:1;pointer-events:auto}
+.sh{position:fixed;bottom:0;left:50%;transform:translate(-50%,102%);width:100%;max-width:560px;z-index:60;
+  background:var(--cream-2);border-radius:28px 28px 0 0;max-height:93vh;display:flex;flex-direction:column;
+  transition:transform .32s cubic-bezier(.32,.72,0,1)}
+.sh.on{transform:translate(-50%,0)}
+.sh-h{padding:20px 20px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;position:relative}
+.sh-h .gr{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:36px;height:4px;border-radius:2px;background:var(--line)}
+.sh-h h3{font-family:var(--serif);font-size:20px;font-weight:600;flex:1}
+.sh-b{padding:18px 20px calc(var(--safe-bottom) + 24px);overflow-y:auto}
+.x{width:33px;height:33px;border-radius:11px;background:var(--cream);display:grid;place-items:center;flex:none}
+
+.li{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.li:last-child{border:none}
+.li .n{flex:1;font-size:13.5px;font-weight:700}
+.li .q{font-size:12px;color:var(--muted);font-weight:700}
+.li .v{font-size:14px;font-weight:800;min-width:74px;text-align:right}
+.tot{display:flex;justify-content:space-between;align-items:baseline;padding:16px 0 4px;margin-top:4px;
+  border-top:2px solid var(--plum)}
+.tot .l{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+.tot .v{font-family:var(--serif);font-size:26px;font-weight:700}
+
+.ok-box{text-align:center;padding:16px 8px 6px}
+.ok-box .ci{width:70px;height:70px;border-radius:50%;background:var(--orange-tint);display:grid;place-items:center;
+  margin:0 auto 18px;border:2px solid var(--orange)}
+.ok-box h3{font-family:var(--serif);font-size:22px;font-weight:600;margin-bottom:9px}
+.ok-box p{font-size:13.5px;color:var(--muted);line-height:1.6;margin:0 0 22px}
+
+.toast{position:fixed;bottom:calc(var(--safe-bottom) + 110px);left:50%;transform:translate(-50%,18px);
+  background:var(--plum);color:var(--cream);padding:13px 20px;border-radius:14px;font-size:13px;font-weight:700;
+  z-index:90;opacity:0;pointer-events:none;transition:.25s;max-width:88%;text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.foot{text-align:center;font-size:11px;color:var(--muted);padding:34px 20px 10px;line-height:1.7}
+</style>
+
+<div class="top">
+  <div class="wm" id="wm"></div>
+  <div class="tagline">Sorvetes &amp; Açaí</div>
+  <h1>Peça sua reposição<br>direto com a fábrica.</h1>
+  <p>Monte o pedido, confirme e a gente separa. Sem ligação, sem esperar resposta no grupo.</p>
+</div>
+
+<div class="cats" id="cats"></div>
+<main><div id="lista"></div>
+  <div class="foot" id="foot"></div>
+</main>
+
+<div class="bar" id="bar">
+  <div class="bi"><div class="bl" id="barQ">0 itens</div><div class="bv mono" id="barV">R$ 0,00</div></div>
+  <button class="go" id="barGo">Revisar pedido</button>
+</div>
+
+<div class="ov" id="ov"></div>
+<div class="sh" id="sh">
+  <div class="sh-h"><div class="gr"></div><h3 id="shT">Seu pedido</h3><button class="x" id="shX"></button></div>
+  <div class="sh-b" id="shB"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================================
+   PORTAL DE PEDIDOS — Reobote
+   -------------------------------------------------------------------
+   COMO EDITAR O CATÁLOGO: mexa apenas no array CATALOGO abaixo.
+   id  -> precisa ser o mesmo id da ficha técnica no app de gestão
+   cat -> sorvete | acai | montagem | outro
+   ===================================================================== */
+const WHATSAPP_FABRICA = '5535999999999';   // <-- trocar pelo número da fábrica (55 + DDD + número)
+const APP_URL          = 'index.html';       // caminho OU link completo do app de gestão
+
+const CATALOGO=[
+  {id:'f1', nome:'Sorvete Chocolate',     cat:'sorvete',  un:'balde 10L', preco:98.00, desc:'Massa cremosa, cobertura de chocolate'},
+  {id:'f2', nome:'Sorvete Creme',         cat:'sorvete',  un:'balde 10L', preco:92.00, desc:'Base tradicional da casa'},
+  {id:'f3', nome:'Sorvete Morango',       cat:'sorvete',  un:'balde 10L', preco:96.00, desc:'Com morango de verdade'},
+  {id:'f4', nome:'Açaí batido',           cat:'acai',     un:'balde 5kg', preco:82.00, desc:'Polpa premium, textura firme'},
+  {id:'f5', nome:'Açaí 500ml montado',    cat:'montagem', un:'unidade',   preco:19.90, desc:'Copo pronto com granola e leite condensado'},
+  {id:'f6', nome:'Taça Kinder',           cat:'montagem', un:'unidade',   preco:24.90, desc:'Creme, avelã e cobertura'},
+  {id:'f7', nome:'Taça Banoffee',         cat:'montagem', un:'unidade',   preco:23.90, desc:'Banana, doce de leite e chantilly'},
+  {id:'f8', nome:'Milkshake Ovomaltine',  cat:'montagem', un:'unidade',   preco:21.90, desc:'500ml, o mais pedido'},
+];
+const CATS=[['todos','Todos'],['sorvete','Sorvetes'],['acai','Açaí'],['montagem','Prontos']];
+
+/* ---------------- ícones ---------------- */
+const IC={
+  snow:'M12 2v20M3.4 7l17.2 10M20.6 7 3.4 17M12 6l-2.5-2.5M12 6l2.5-2.5M12 18l-2.5 2.5M12 18l2.5 2.5',
+  drop:'M12 3.2s6 6.4 6 10.3a6 6 0 0 1-12 0C6 9.6 12 3.2 12 3.2Z',
+  cup:'M6 7h12l-1.2 12.2a2 2 0 0 1-2 1.8H9.2a2 2 0 0 1-2-1.8L6 7ZM8.5 3.5c.8 1 2 1.5 3.5 1.5s2.7-.5 3.5-1.5M6.4 11h11.2',
+  plus:'M12 5v14M5 12h14', minus:'M5 12h14', close:'M6 6l12 12M18 6 6 18',
+  check:'M4.5 12.5 9.5 17.5 19.5 7', cart:'M3 4h2.2l2.3 11.2a1.5 1.5 0 0 0 1.5 1.2h8.2a1.5 1.5 0 0 0 1.5-1.2L20.5 8H6M9.5 20.5h.01M17 20.5h.01',
+  phone:'M6.5 3.5h3l1.5 4-2 1.5a12 12 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2.2 2A17 17 0 0 1 4.5 5.7a2 2 0 0 1 2-2.2Z',
+};
+const ic=(n,s,c,w)=>'<svg width="'+(s||20)+'" height="'+(s||20)+'" viewBox="0 0 24 24" fill="none" stroke="'+(c||'currentColor')+
+  '" stroke-width="'+(w||1.8)+'" stroke-linecap="round" stroke-linejoin="round"><path d="'+IC[n]+'"/></svg>';
+const oMark=sz=>'<span class="om" style="width:'+sz+'px;height:'+sz+'px"><svg viewBox="0 0 24 24" width="'+sz+'" height="'+sz+'">'+
+  '<circle cx="12" cy="12" r="11" fill="#E8924C"/>'+
+  '<path d="M17 8.5a6.2 6.2 0 1 0 1 3.5h-5" fill="none" stroke="#F7EFE8" stroke-width="2.4" stroke-linecap="round"/></svg></span>';
+
+/* ---------------- helpers ---------------- */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const money=v=>'R$ '+(+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(m){const t=$('#toast');t.textContent=m;t.className='toast on';clearTimeout(t._t);t._t=setTimeout(()=>t.className='toast',2200);}
+
+/* ---------------- estado ---------------- */
+let cart={}, cat='todos';
+try{ cart=JSON.parse(localStorage.getItem('reobote_cart')||'{}'); }catch(e){ cart={}; }
+const salvaCart=()=>{try{localStorage.setItem('reobote_cart',JSON.stringify(cart));}catch(e){}};
+const dadosLoja=()=>{try{return JSON.parse(localStorage.getItem('reobote_loja')||'{}');}catch(e){return {};}};
+
+const totalQ=()=>Object.values(cart).reduce((s,q)=>s+q,0);
+const totalV=()=>Object.entries(cart).reduce((s,[id,q])=>{const p=CATALOGO.find(x=>x.id===id);return s+(p?p.preco*q:0);},0);
+
+/* ---------------- render ---------------- */
+function render(){
+  $('#cats').innerHTML=CATS.map(([v,l])=>'<button class="cat'+(cat===v?' on':'')+'" data-cat="'+v+'">'+l+'</button>').join('');
+  const L=CATALOGO.filter(p=>cat==='todos'||p.cat===cat);
+  $('#lista').innerHTML=L.map(p=>{
+    const q=cart[p.id]||0;
+    const icone=p.cat==='acai'?'drop':p.cat==='sorvete'?'snow':'cup';
+    return '<div class="prod'+(q?' in':'')+'">'+
+      '<div class="th">'+ic(icone,25,'var(--orange-deep)')+'</div>'+
+      '<div class="bd"><div class="nm">'+esc(p.nome)+'</div><div class="ds">'+esc(p.desc)+'</div>'+
+      '<div class="pr">'+money(p.preco)+' <small>/ '+esc(p.un)+'</small></div></div>'+
+      '<div class="stp">'+(q?'<button data-m="'+p.id+'">'+ic('minus',16)+'</button><span class="q mono">'+q+'</span>':'')+
+      '<button class="add" data-p="'+p.id+'">'+ic('plus',16,'#fff')+'</button></div></div>';
+  }).join('');
+  const q=totalQ();
+  $('#bar').classList.toggle('on',q>0);
+  $('#barQ').textContent=q+(q===1?' item':' itens');
+  $('#barV').textContent=money(totalV());
+  $('#foot').innerHTML='Reobote Sorvetes &amp; Açaí · Rua Rio de Janeiro, 16 — Poços de Caldas<br>Pedidos até 16h saem na entrega do dia seguinte.';
+}
+function add(id,d){
+  cart[id]=Math.max(0,(cart[id]||0)+d);
+  if(!cart[id]) delete cart[id];
+  salvaCart(); render(); if(navigator.vibrate) navigator.vibrate(8);
+}
+
+/* ---------------- sheet ---------------- */
+function sheet(t,html){ $('#shT').textContent=t; $('#shB').innerHTML=html; $('#ov').classList.add('on'); $('#sh').classList.add('on'); }
+function fecha(){ $('#ov').classList.remove('on'); $('#sh').classList.remove('on'); }
+
+function revisar(){
+  const d=dadosLoja();
+  const itens=Object.entries(cart).map(([id,q])=>({p:CATALOGO.find(x=>x.id===id),q})).filter(x=>x.p);
+  const amanha=new Date(Date.now()+864e5).toISOString().slice(0,10);
+  sheet('Seu pedido',
+    itens.map(({p,q})=>'<div class="li"><div class="n">'+esc(p.nome)+'<div class="q">'+q+' × '+money(p.preco)+'</div></div>'+
+      '<div class="v mono">'+money(p.preco*q)+'</div></div>').join('')+
+    '<div class="tot"><span class="l">Total</span><span class="v mono">'+money(totalV())+'</span></div>'+
+    '<div style="height:24px"></div>'+
+    '<div class="f"><label>Nome da loja</label><input id="qLoja" value="'+esc(d.loja||'')+'" placeholder="Ex.: Padaria Estrela"></div>'+
+    '<div class="f2"><div class="f"><label>Responsável</label><input id="qResp" value="'+esc(d.resp||'')+'"></div>'+
+    '<div class="f"><label>WhatsApp</label><input id="qTel" inputmode="tel" value="'+esc(d.tel||'')+'"></div></div>'+
+    '<div class="f"><label>Entrega desejada</label><input id="qData" type="date" value="'+amanha+'"></div>'+
+    '<div class="f"><label>Observação</label><textarea id="qObs" placeholder="Ex.: entregar antes das 10h, portão dos fundos"></textarea></div>'+
+    '<button class="btn" id="qEnviar">'+ic('check',18)+' Confirmar pedido</button>'+
+    '<button class="btn ghost" id="qVoltar" style="margin-top:9px">Continuar escolhendo</button>');
+  $('#qVoltar').onclick=fecha;
+  $('#qEnviar').onclick=enviar;
+}
+
+function enviar(){
+  const loja=$('#qLoja').value.trim(), resp=$('#qResp').value.trim(), tel=$('#qTel').value.trim();
+  if(!loja||!tel){ toast('Preencha a loja e o WhatsApp'); return; }
+  const data=$('#qData').value, obs=$('#qObs').value.trim();
+  try{ localStorage.setItem('reobote_loja',JSON.stringify({loja,resp,tel})); }catch(e){}
+
+  const itens=Object.entries(cart).map(([id,q])=>{const p=CATALOGO.find(x=>x.id===id);return {fid:id,qtd:q,preco:p.preco,nome:p.nome};});
+  const total=totalV();
+  const pedido={loja,resp,tel,data,obs,itens,total,ts:Date.now()};
+
+  /* payload que o app de gestão importa com 1 toque */
+  const b64=btoa(unescape(encodeURIComponent(JSON.stringify(pedido))));
+  const base=/^https?:/.test(APP_URL)?APP_URL
+    :location.origin+location.pathname.replace(/pedidos\.html$/,'')+APP_URL;
+  const link=base+'#p='+encodeURIComponent(b64);
+
+  const txt='*NOVO PEDIDO — REOBOTE*\n\n'+
+    '*Loja:* '+loja+'\n'+(resp?'*Responsável:* '+resp+'\n':'')+
+    '*WhatsApp:* '+tel+'\n'+
+    '*Entrega:* '+data.split('-').reverse().join('/')+'\n\n'+
+    itens.map(i=>'• '+i.qtd+'× '+i.nome+' — '+money(i.qtd*i.preco)).join('\n')+
+    '\n\n*Total: '+money(total)+'*'+
+    (obs?'\n\n_Obs: '+obs+'_':'')+
+    '\n\n----------\nLançar no sistema:\n'+link;
+
+  sheet('Pedido confirmado',
+    '<div class="ok-box"><div class="ci">'+ic('check',32,'var(--orange-deep)',2.4)+'</div>'+
+    '<h3>Pedido registrado</h3>'+
+    '<p>Toque no botão abaixo para enviar à fábrica pelo WhatsApp. A confirmação da entrega volta por lá mesmo.</p>'+
+    '<button class="btn" id="okWpp">'+ic('phone',18)+' Enviar para a fábrica</button>'+
+    '<button class="btn ghost" id="okCopy" style="margin-top:9px">Copiar pedido</button>'+
+    '<button class="btn plum" id="okNovo" style="margin-top:9px">Fazer outro pedido</button></div>');
+  $('#okWpp').onclick=()=>window.open('https://wa.me/'+WHATSAPP_FABRICA+'?text='+encodeURIComponent(txt),'_blank');
+  $('#okCopy').onclick=()=>{navigator.clipboard.writeText(txt);toast('Pedido copiado');};
+  $('#okNovo').onclick=()=>{cart={};salvaCart();fecha();render();toast('Pronto para um novo pedido');};
+}
+
+/* ---------------- eventos ---------------- */
+$('#wm').innerHTML='<span>Reob</span>'+oMark(26)+'<span>te</span>';
+$('#shX').innerHTML=ic('close',17,'var(--muted)');
+$('#barGo').innerHTML=ic('cart',17,'#33170A')+' Revisar pedido';
+$('#ov').onclick=fecha; $('#shX').onclick=fecha;
+$('#barGo').onclick=revisar;
+document.addEventListener('click',e=>{
+  const p=e.target.closest('[data-p]'), m=e.target.closest('[data-m]'), c=e.target.closest('[data-cat]');
+  if(p) return add(p.dataset.p,1);
+  if(m) return add(m.dataset.m,-1);
+  if(c){ cat=c.dataset.cat; return render(); }
+});
+render();
+</script>
