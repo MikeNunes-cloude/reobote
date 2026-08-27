@@ -2134,8 +2134,8 @@ document.addEventListener('click',e=>{ if(e.target.closest('#btnCatalogo')) gera
    Settings → API → Project URL e a chave publishable/anon.
    Precisa ser um projeto SÓ da Reobote: a chave fica visível no código,
    então quem abre esta página alcança tudo que o projeto expõe. */
-const SB_URL='';
-const SB_KEY='';
+const SB_URL='https://idrgoyxosahliwihamph.supabase.co';
+const SB_KEY='sb_publishable_u55Bbrgy9OqxFHM4IEBSjg_wgl61NOP';
 let sb=null, nuvem={ligado:false,erro:'',ultima:0};
 
 function iniciaNuvem(){
@@ -2180,6 +2180,7 @@ async function puxaPedidos(){
 /* grava o pedido no app; devolve true se era inédito */
 function recebePedido(r,avisar){
   if(!r||!r.id) return false;
+  if(r.status==='cancelado') return false;
   if(DB.pedidos.some(p=>p.nuvemId===r.id)) return false;
   let c=DB.clientes.find(x=>x.nome.toLowerCase()===String(r.loja||'').toLowerCase());
   if(!c){ c={id:'c'+uid(),nome:r.loja||'Cliente',contato:r.tel||'',end:'',cidade:'',tipo:'mercado',ativo:1};

@@ -34,6 +34,12 @@ funcionar, a Reobote precisa do **projeto próprio** no Supabase:
 4. Cole os dois valores em `SB_URL` e `SB_KEY`, no topo do `<script>` do
    **`index.html`** e do **`pedidos.html`** (os mesmos dois valores nos dois arquivos)
 
+> Já feito: o projeto da Reobote é o `idrgoyxosahliwihamph` e as credenciais estão
+> nos dois arquivos. Este passo só volta a ser necessário se o projeto mudar.
+
+O portal só pode **criar** pedido; apagar não. Para limpar registros de teste, rode no
+SQL Editor: `delete from reobote_pedidos where status = 'cancelado';`
+
 **Não reaproveite o projeto de outro cliente.** Essa chave fica visível no código-fonte
 de quem abrir a página, então quem tem o link do portal alcança tudo que o projeto
 expõe. Um projeto por negócio.
