@@ -12,16 +12,15 @@ HTML puro + PWA, sem build. Mesma stack do New Wash.
 | `manifest.webmanifest` / `sw.js` | instalação na tela de início + funcionamento offline |
 | `assets/` | ícones |
 
-## PINs de acesso (trocar antes de entregar)
+## Acesso
 
-| PIN | pessoa | perfil |
-|---|---|---|
-| 1234 | Proprietário | Dono — vê tudo, inclusive custo e margem |
-| 2222 | Gerente Loja | Gerente — tudo menos custos e configurações |
-| 3333 | Produção | Produção — produz, estoque, insumos, frio |
+O app **abre direto, sem senha** — a equipe usa o dia todo sem barreira.
 
-Perfis disponíveis: **Dono, Gerente, Produção, Loja, Entregador**.
-Cada um só enxerga o que precisa — o custo real e a margem ficam só com o dono.
+A única área trancada é o **Financeiro**, com a senha **2409**.
+Uma vez digitada, ela vale até fechar o app; o botão "trancar" fecha antes disso.
+
+Quem está operando é escolhido no ícone de pessoa do topo (sem senha). Serve só para
+assinar quem registrou cada produção, perda e leitura de temperatura.
 
 ## O que já funciona
 
@@ -35,6 +34,21 @@ Cada um só enxerga o que precisa — o custo real e a margem ficam só com o do
 - **Lista de compra**: gera o que está abaixo do mínimo e manda pronto no WhatsApp.
 - **Pedidos**: novo → separação → rota → entregue, com baixa de estoque na entrega e aviso ao cliente no WhatsApp.
 - **Portal do cliente**: a revenda monta o pedido e envia; o link cai no app e vira pedido com 1 toque.
+- **Financeiro (senha 2409)**: lucro do período, demonstrativo linha a linha e gráfico dos últimos 6 meses.
+
+### Como o Financeiro calcula
+
+```
+  Vendas no balcão      (fechamento de caixa lançado por loja)
++ Pedidos entregues     (revendas e distribuição)
+− Custo de produção     (insumo e embalagem das bateladas do período)
+− Despesas              (aluguel, energia, salários, impostos...)
+− Perdas                (quebra e vencimento, ao custo real)
+= Lucro
+```
+
+A compra de insumo **não** entra como despesa: ela vira estoque e só pesa no resultado
+quando é consumida na produção. Lançar as duas coisas contaria o mesmo gasto duas vezes.
 
 ## Portal de pedidos — o que editar
 

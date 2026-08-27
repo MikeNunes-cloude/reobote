@@ -173,6 +173,27 @@ main{padding:16px 14px 120px;position:relative;z-index:1}
   font-size:19px;font-weight:700;display:grid;place-items:center}
 .stepper input{text-align:center;flex:1}
 
+/* ================= gráfico ================= */
+.graf{display:flex;align-items:stretch;gap:9px;height:150px;padding:14px 4px 0}
+.gcol{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:7px;min-width:0}
+.gtrack{flex:1;width:100%;max-width:34px;display:flex;align-items:flex-end}
+.gbar{width:100%;background:var(--plum-800);border-radius:7px 7px 3px 3px;
+  display:flex;align-items:flex-end;overflow:hidden;transition:height .5s}
+.gbar i{display:block;width:100%;background:linear-gradient(180deg,var(--orange),var(--orange-deep));
+  border-radius:5px 5px 0 0;transition:height .5s}
+.gbar i.neg{background:linear-gradient(180deg,var(--bad),#8E1F35)}
+.gcol span{font-size:9.5px;font-weight:800;color:var(--muted-2);text-transform:uppercase;letter-spacing:.04em}
+
+/* ================= demonstrativo ================= */
+.dl{display:flex;align-items:center;gap:12px;padding:13px 15px;background:var(--plum-900);
+  border:1px solid var(--line);border-radius:15px;margin-bottom:7px}
+.dl .dn{flex:1;font-size:13.5px;font-weight:700}
+.dl .dn small{display:block;font-size:11px;color:var(--muted-2);font-weight:600;margin-top:2px}
+.dl .dv{font-size:15px;font-weight:800;letter-spacing:-.02em}
+.dl.tot{background:linear-gradient(140deg,var(--plum-800),var(--plum-850));border-color:var(--line-2);padding:16px 15px}
+.dl.tot .dn{font-size:15px}
+.dl.tot .dv{font-size:19px}
+
 /* ================= nav ================= */
 nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:560px;z-index:40;
   background:rgba(26,5,28,.94);backdrop-filter:blur(20px);border-top:1px solid var(--line);
@@ -218,7 +239,8 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
 #lock>*{position:relative;z-index:1}
 #lock .lw{font-family:var(--serif);font-size:34px;font-weight:600;display:flex;align-items:baseline;margin-bottom:5px}
 #lock .lw .o-mark{width:30px;height:30px;transform:translateY(3px)}
-#lock .lt{font-size:9px;font-weight:800;letter-spacing:.34em;color:var(--muted-2);text-transform:uppercase;margin-bottom:32px}
+#lock .lt{font-size:9px;font-weight:800;letter-spacing:.34em;color:var(--orange);text-transform:uppercase;margin-bottom:32px}
+#lockSair{margin-top:28px;font-size:12.5px;font-weight:700;color:var(--muted-2);padding:10px 16px}
 #lock p{font-size:12.5px;color:var(--muted);margin:0 0 22px;line-height:1.5}
 .pins{display:flex;gap:12px;margin-bottom:24px}
 .pin{width:14px;height:14px;border-radius:50%;background:var(--plum-850);border:1px solid var(--line-2);transition:.16s}
@@ -235,10 +257,11 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
 <!-- ======================= LOCK ======================= -->
 <div id="lock">
   <div class="lw" id="lockWord"></div>
-  <div class="lt">Sorvetes &amp; Açaí</div>
-  <p id="lockSub">Digite seu PIN de acesso</p>
+  <div class="lt">Financeiro</div>
+  <p id="lockSub">Área restrita — digite a senha</p>
   <div class="pins" id="pins"></div>
   <div class="keys" id="keys"></div>
+  <button id="lockSair">Voltar ao app</button>
 </div>
 
 <!-- ======================= HEADER ======================= -->
@@ -247,6 +270,7 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
   <div class="head-sp"></div>
   <button class="hbtn" id="btnAlerts"><span class="dot hide" id="alertDot"></span></button>
   <button class="hbtn" id="btnUser"></button>
+  <button class="hbtn" id="btnMais"></button>
 </header>
 
 <main>
@@ -282,6 +306,21 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
     <div class="sec">Pedidos<span class="sp"></span><button id="btnNovoPed">+ manual</button></div>
     <div class="chips" id="pedTabs" style="margin-bottom:14px"></div>
     <div id="pedList"></div>
+  </div>
+
+  <!-- ---------------- FINANCEIRO ---------------- -->
+  <div class="view" id="v-fin">
+    <div class="sec">Financeiro<span class="sp"></span><button id="btnTrancar">trancar</button></div>
+    <div class="chips" id="finTabs" style="margin-bottom:14px"></div>
+    <div id="finResumo"></div>
+    <div class="sec">Movimento do período</div>
+    <div id="finDemo"></div>
+    <div class="sec">Últimos 6 meses</div>
+    <div id="finGraf"></div>
+    <div class="sec">Lançar<span class="sp"></span></div>
+    <div class="grid2" id="finAcoes"></div>
+    <div class="sec">Despesas do período<span class="sp"></span><button id="btnNovaDespesa">+ despesa</button></div>
+    <div id="finDespesas"></div>
   </div>
 
   <!-- ---------------- MAIS ---------------- -->
@@ -440,16 +479,16 @@ function vibra(ms){ if(navigator.vibrate) navigator.vibrate(ms||12); }
 
 /* ---------------------------- ESTADO ---------------------------- */
 const KEY='reobote_v1';
-let DB=null, USER=null, VIEW='home';
+let DB=null, VIEW='home';
 
-const PAPEIS={
-  dono:      {nome:'Dono',       mods:'*'},
-  gerente:   {nome:'Gerente',    mods:['home','prod','est','ped','mais','insumos','fichas','transf','perdas','frio','clientes','equipe']},
-  producao:  {nome:'Produção',   mods:['home','prod','est','mais','insumos','fichas','transf','perdas','frio']},
-  loja:      {nome:'Loja',       mods:['home','est','ped','mais','transf','perdas','frio']},
-  entregador:{nome:'Entregador', mods:['home','ped','mais','transf','frio','clientes']},
-};
-const can=m=>{ if(!USER)return false; const p=PAPEIS[USER.papel]; return p.mods==='*'||p.mods.includes(m); };
+/* O app abre livre para a equipe. Quem opera é apenas identificado (sem senha),
+   para que produção, perda e temperatura fiquem com nome no registro.
+   A única área trancada é o Financeiro. */
+const SENHA_FIN='2409';
+let finLiberado=false;
+
+const quem=()=>(DB&&DB.cfg.operador)||'Equipe';
+const can=()=>true;
 
 function seed(){
   const un=[
@@ -492,32 +531,38 @@ function seed(){
     F('f7','Taça Banoffee','montagem',1,'un',[['f2',.18],['i14',.08],['i5',.03],['i18',1],['i20',1]],23.90),
     F('f8','Milkshake Ovomaltine','montagem',1,'un',[['f2',.2],['i2',.15],['i11',.03],['i17',1],['i19',1]],21.90),
   ];
-  const users=[
-    {id:'us1',nome:'Proprietário',pin:'1234',papel:'dono',ativo:1},
-    {id:'us2',nome:'Gerente Loja',pin:'2222',papel:'gerente',ativo:1},
-    {id:'us3',nome:'Produção',pin:'3333',papel:'producao',ativo:1},
-  ];
+  const equipe=['Proprietário','Gerente','Produção'];
   const freezers=[
     {id:'fz1',cod:'FZ-01',local:'Fábrica — câmara',tipo:'proprio',uid:'u1',cliente:'',alvo:-18},
     {id:'fz2',cod:'FZ-02',local:'Loja Centro — vitrine',tipo:'proprio',uid:'u2',cliente:'',alvo:-14},
     {id:'fz3',cod:'FZ-03',local:'Loja Centro — estoque',tipo:'proprio',uid:'u2',cliente:'',alvo:-18},
   ];
   return {
-    unidades:un, insumos, fichas, users, freezers,
+    unidades:un, insumos, fichas, equipe, freezers,
     producoes:[], estoque:[], transf:[], perdas:[], temps:[],
+    despesas:[], caixa:[],
     clientes:[
       {id:'c1',nome:'Padaria Estrela',contato:'(35) 99999-0001',end:'Av. Brasil, 210',tipo:'revenda',freezer:'',ativo:1},
       {id:'c2',nome:'Mercado Bom Preço',contato:'(35) 99999-0002',end:'R. São Paulo, 88',tipo:'revenda',freezer:'',ativo:1},
     ],
     pedidos:[],
-    cfg:{unidade:'u1', metaLitrosDia:80, alertaValidade:15, versao:'1.0'},
+    cfg:{unidade:'u1', operador:'Proprietário', metaLitrosDia:80, alertaValidade:15, versao:'1.1'},
   };
 }
 
 function load(){
   try{ const raw=localStorage.getItem(KEY); DB=raw?JSON.parse(raw):seed(); }
   catch(e){ DB=seed(); }
-  if(!DB.cfg) DB.cfg=seed().cfg;
+  const base=seed();
+  if(!DB.cfg) DB.cfg=base.cfg;
+  /* migração da v1.0 (que tinha login por PIN) */
+  if(!DB.equipe) DB.equipe=(DB.users||[]).map(u=>u.nome).filter(Boolean);
+  if(!DB.equipe.length) DB.equipe=base.equipe;
+  delete DB.users;
+  if(!DB.cfg.operador) DB.cfg.operador=DB.equipe[0];
+  if(!DB.despesas) DB.despesas=[];
+  if(!DB.caixa) DB.caixa=[];
+  DB.cfg.versao=base.cfg.versao;
 }
 function save(){ try{ localStorage.setItem(KEY,JSON.stringify(DB)); }catch(e){ toast('Sem espaço para salvar','bad'); } }
 
@@ -594,7 +639,7 @@ function alertas(){
 /* =====================================================================
    NAVEGAÇÃO
    ===================================================================== */
-const NAV=[['home','Início','home'],['prod','Produção','prod'],['est','Estoque','box'],['ped','Pedidos','cart'],['mais','Mais','grid']];
+const NAV=[['home','Início','home'],['prod','Produção','prod'],['est','Estoque','box'],['ped','Pedidos','cart'],['fin','Financeiro','money']];
 function renderNav(){
   const novos=DB.pedidos.filter(p=>p.status==='novo').length;
   $('#nav').innerHTML=NAV.map(([id,lb,i])=>{
@@ -604,7 +649,7 @@ function renderNav(){
   }).join('');
 }
 function go(v){
-  if(!can(v)){ toast('Seu perfil não tem acesso','bad'); return; }
+  if(v==='fin' && !finLiberado){ abreCadeado(); return; }
   VIEW=v; $$('.view').forEach(x=>x.classList.remove('active'));
   const el=$('#v-'+v); if(el) el.classList.add('active');
   window.scrollTo({top:0,behavior:'instant'});
@@ -626,7 +671,7 @@ RENDER.home=()=>{
   const vendaHoje=DB.pedidos.filter(p=>p.data.slice(0,10)===hoje()).reduce((s,p)=>s+p.total,0);
 
   $('#heroBox').innerHTML='<div class="hero">'+
-    '<div class="hi">'+sd+', '+esc(USER.nome.split(' ')[0])+'</div>'+
+    '<div class="hi">'+sd+', '+esc(quem().split(' ')[0])+'</div>'+
     '<div class="hn">'+new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})+'</div>'+
     '<div class="hd">'+
       '<div><div class="hl">Produzido hoje</div><div class="hv mono">'+num(litros,1)+'<small>L</small></div></div>'+
@@ -768,7 +813,8 @@ RENDER.mais=()=>{
     linha('equipe','users','Equipe','Acessos e PINs')].join('');
   $('#maisSis').innerHTML=[linha('config','gear','Configurações','Unidade, metas e dados'),
     '<button class="item" id="btnSair"><div class="ic">'+ic('user',18,'var(--muted)')+'</div>'+
-    '<div class="bd"><div class="t">Sair da conta</div><div class="s">'+esc(USER.nome)+' · '+PAPEIS[USER.papel].nome+'</div></div></button>'].join('');
+    '<div class="bd"><div class="t">Quem está operando</div><div class="s">'+esc(quem())+' · '+gUn(DB.cfg.unidade).nome+'</div></div>'+
+    ic('chevron',16,'var(--muted-2)')+'</button>'].join('');
   $('#verTxt').innerHTML='Reobote Gestão v'+DB.cfg.versao+'<br>Sorvetes &amp; Açaí · Poços de Caldas';
 };
 </script>
@@ -887,10 +933,15 @@ RENDER.custos=()=>{
 
 /* ---------- EQUIPE ---------- */
 RENDER.equipe=()=>{
-  $('#userList').innerHTML=DB.users.map(u=>
-    '<button class="item" data-usr="'+u.id+'"><div class="ic">'+ic('user',18,'var(--orange)')+'</div>'+
-    '<div class="bd"><div class="t">'+esc(u.nome)+'</div><div class="s">PIN '+u.pin.replace(/./g,'•')+' · '+PAPEIS[u.papel].nome+'</div></div>'+
-    '<div class="rt"><span class="tag '+(u.ativo?'ok':'')+'">'+(u.ativo?'ativo':'inativo')+'</span></div></button>').join('');
+  $('#userList').innerHTML='<div class="card" style="margin-bottom:12px;font-size:12.5px;color:var(--muted);line-height:1.55">'+
+      'O app abre sem senha para todo mundo. Estes nomes servem para assinar quem registrou cada produção, perda e leitura de temperatura.'+
+      '<br><br>Só o <b style="color:var(--orange-soft)">Financeiro</b> pede senha.</div>'+
+    DB.equipe.map(n=>
+      '<div class="item"><div class="ic">'+ic('user',18,'var(--orange)')+'</div>'+
+      '<div class="bd"><div class="t">'+esc(n)+'</div>'+
+      '<div class="s">'+(quem()===n?'operando neste aparelho':'&nbsp;')+'</div></div>'+
+      (DB.equipe.length>1?'<button data-eqx="'+esc(n)+'" style="width:32px;height:32px;display:grid;place-items:center">'+
+        ic('close',15,'var(--bad)')+'</button>':'')+'</div>').join('');
 };
 
 /* ---------- CONFIG ---------- */
@@ -996,7 +1047,7 @@ function novaProducao(fid){
     const lote=val('pLote')||novoLote();
     addEstoque(DB.cfg.unidade,f.id,lote,real,val('pVal'));
     DB.producoes.push({id:uid(),fid:f.id,lote,data:hoje(),ts:Date.now(),prev,real,
-      custo:custoFicha(f)*mult,quem:USER.nome,obs:val('pObs'),uid:DB.cfg.unidade});
+      custo:custoFicha(f)*mult,quem:quem(),obs:val('pObs'),uid:DB.cfg.unidade});
     save(); fecha(); vibra(18);
     const r=real/prev*100;
     toast(r<92?'Registrado — rendimento '+num(r,0)+'%, abaixo do padrão':'Batelada registrada · lote '+lote, r<92?'bad':'ok');
@@ -1208,7 +1259,7 @@ function novaPerda(fid){
     if(!f||q<=0){ toast('Informe a quantidade','bad'); return; }
     const u=val('lU');
     baixaEstoque(u,f.id,q);
-    DB.perdas.push({id:uid(),fid:f.id,uid:u,qtd:q,motivo,valor:custoUnit(f)*q,data:hoje(),ts:Date.now(),quem:USER.nome,obs:val('lO')});
+    DB.perdas.push({id:uid(),fid:f.id,uid:u,qtd:q,motivo,valor:custoUnit(f)*q,data:hoje(),ts:Date.now(),quem:quem(),obs:val('lO')});
     save(); fecha(); vibra(); toast('Perda registrada · '+money(custoUnit(f)*q),'bad'); RENDER[VIEW]&&RENDER[VIEW]();
   };
 }
@@ -1232,7 +1283,7 @@ function medirTemp(fzid){
       '<div style="flex:1"><div class="at">Dentro da faixa</div><div class="ad">Temperatura adequada para conservação.</div></div></div>';};
   $('#tT').oninput=upd; upd();
   $('#tSalvar').onclick=()=>{
-    DB.temps.push({id:uid(),fzid,temp:nval('tT'),data:new Date().toISOString(),quem:USER.nome,obs:val('tO')});
+    DB.temps.push({id:uid(),fzid,temp:nval('tT'),data:new Date().toISOString(),quem:quem(),obs:val('tO')});
     save(); fecha(); vibra(); toast('Leitura registrada','ok'); RENDER[VIEW]&&RENDER[VIEW]();
   };
 }
@@ -1316,7 +1367,7 @@ function novaTransf(){
     const its=tItens.filter(i=>i.qtd>0); if(!its.length){ toast('Adicione itens','bad'); return; }
     const de=DB.cfg.unidade, para=val('trPara');
     for(const it of its){ if(!baixaEstoque(de,it.fid,it.qtd)){ toast('Saldo insuficiente de '+(gFic(it.fid)||{}).nome,'bad'); return; } }
-    DB.transf.push({id:uid(),de,para,itens:its,status:'enviado',data:hoje(),ts:Date.now(),quem:USER.nome});
+    DB.transf.push({id:uid(),de,para,itens:its,status:'enviado',data:hoje(),ts:Date.now(),quem:quem()});
     save(); fecha(); vibra(); toast('Transferência enviada · aguarda aceite','ok'); go('transf');
   };
 }
@@ -1337,7 +1388,7 @@ function abrirTransf(id){
   if(podeAceitar){
     $('#trOk').onclick=()=>{
       t.itens.forEach(it=>addEstoque(t.para,it.fid,'TR-'+t.id.slice(0,4),it.qtd,''));
-      t.status='recebido'; t.recebidoEm=hoje(); t.recebidoPor=USER.nome;
+      t.status='recebido'; t.recebidoEm=hoje(); t.recebidoPor=quem();
       save(); fecha(); vibra(); toast('Recebimento confirmado','ok'); go('transf');
     };
     $('#trDiv').onclick=()=>divergencia(t);
@@ -1357,7 +1408,7 @@ function divergencia(t){
       it.recebido=r; if(Math.abs(r-it.qtd)>0.001) div=true;
       if(r>0) addEstoque(t.para,it.fid,'TR-'+t.id.slice(0,4),r,'');
     });
-    t.status=div?'divergencia':'recebido'; t.recebidoEm=hoje(); t.recebidoPor=USER.nome; t.obs=val('dvO');
+    t.status=div?'divergencia':'recebido'; t.recebidoEm=hoje(); t.recebidoPor=quem(); t.obs=val('dvO');
     save(); fecha(); toast(div?'Divergência registrada':'Recebimento confirmado',div?'bad':'ok'); go('transf');
   };
 }
@@ -1444,7 +1495,7 @@ function novoPedido(cid){
   $('#pdSalvar').onclick=()=>{
     const its=pItens.filter(i=>i.qtd>0); if(!its.length){ toast('Adicione itens','bad'); return; }
     DB.pedidos.push({id:uid(),cid:val('pdC'),itens:its,status:'novo',data:new Date().toISOString(),ts:Date.now(),
-      total:its.reduce((s,i)=>s+i.qtd*i.preco,0),origem:'app',entrega:val('pdD'),quem:USER.nome});
+      total:its.reduce((s,i)=>s+i.qtd*i.preco,0),origem:'app',entrega:val('pdD'),quem:quem()});
     save(); fecha(); vibra(); toast('Pedido criado','ok'); go('ped');
   };
 }
@@ -1479,33 +1530,15 @@ function abrirPedido(id){
 /* =====================================================================
    EQUIPE / CONFIG
    ===================================================================== */
-function editarUser(id){
-  const u=id?DB.users.find(x=>x.id===id):{id:'',nome:'',pin:'',papel:'loja',ativo:1};
-  sheet(id?'Editar acesso':'Nova pessoa','',
-    '<div class="f"><label>Nome</label><input id="uN" value="'+esc(u.nome)+'" autofocus></div>'+
-    '<div class="f"><label>PIN (4 dígitos)</label><input id="uP" inputmode="numeric" maxlength="4" value="'+esc(u.pin)+'"></div>'+
-    '<div class="f"><label>Perfil</label><div class="chips" id="uPa">'+
-      Object.entries(PAPEIS).map(([v,o])=>'<button class="chip'+(u.papel===v?' on':'')+'" data-pa="'+v+'">'+o.nome+'</button>').join('')+'</div>'+
-      '<div class="hint" id="uHint"></div></div>'+
-    '<button class="btn" id="uSalvar">'+ic('check',18)+' Salvar</button>'+
-    (id&&DB.users.length>1?'<button class="btn danger" id="uDel" style="margin-top:9px">Remover acesso</button>':''));
-  let papel=u.papel;
-  const hint=()=>{const m=PAPEIS[papel].mods;
-    $('#uHint').textContent=m==='*'?'Acesso total, incluindo custos, margem e configurações.':
-      'Vê apenas: '+m.filter(x=>x!=='home'&&x!=='mais').map(x=>({prod:'produção',est:'estoque',ped:'pedidos',insumos:'insumos',
-      fichas:'fichas',transf:'transferências',perdas:'perdas',frio:'temperatura',clientes:'clientes',equipe:'equipe'}[x]||x)).join(', ')+'.';};
-  $$('#uPa .chip').forEach(c=>c.onclick=()=>{$$('#uPa .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');papel=c.dataset.pa;hint();});
-  hint();
+function editarUser(){
+  sheet('Nova pessoa','Sem senha — só o nome de quem opera',
+    '<div class="f"><label>Nome</label><input id="uN" placeholder="Ex.: Marcos" autofocus></div>'+
+    '<button class="btn" id="uSalvar">'+ic('check',18)+' Adicionar</button>');
   $('#uSalvar').onclick=()=>{
-    const nome=val('uN'), pin=val('uP');
-    if(!nome||pin.length!==4){ toast('Nome e PIN de 4 dígitos','bad'); return; }
-    if(DB.users.some(x=>x.pin===pin&&x.id!==u.id)){ toast('Este PIN já está em uso','bad'); return; }
-    const o={id:u.id||('us'+uid()),nome,pin,papel,ativo:1};
-    if(id) Object.assign(DB.users.find(x=>x.id===id),o); else DB.users.push(o);
-    save(); fecha(); toast('Acesso salvo','ok'); RENDER[VIEW]&&RENDER[VIEW]();
+    const nome=val('uN'); if(!nome){ toast('Informe o nome','bad'); return; }
+    if(!DB.equipe.includes(nome)) DB.equipe.push(nome);
+    save(); fecha(); toast('Pessoa adicionada','ok'); RENDER.equipe();
   };
-  if(id&&DB.users.length>1) $('#uDel').onclick=()=>{ if(!confirm('Remover '+u.nome+'?'))return;
-    DB.users=DB.users.filter(x=>x.id!==id); save(); fecha(); RENDER[VIEW]&&RENDER[VIEW](); };
 }
 function exportar(){
   const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
@@ -1527,7 +1560,37 @@ function importar(){
 
 <script>
 /* =====================================================================
-   LOCK / LOGIN
+   QUEM ESTÁ OPERANDO (sem senha — só para assinar os registros)
+   ===================================================================== */
+function quemOpera(){
+  sheet('Quem está operando','Sem senha — só para o registro ficar assinado',
+    '<div class="f"><label>Pessoa</label><div class="chips" id="qoLista">'+
+      DB.equipe.map(n=>'<button class="chip'+(quem()===n?' on':'')+'" data-qo="'+esc(n)+'">'+esc(n)+'</button>').join('')+
+    '</div></div>'+
+    '<div class="f"><label>Adicionar pessoa</label>'+
+      '<div style="display:flex;gap:9px"><input id="qoNovo" placeholder="Nome de quem trabalha aqui">'+
+      '<button class="btn sm" id="qoAdd" style="flex:none">'+ic('plus',16)+'</button></div></div>'+
+    '<div class="f"><label>Unidade deste aparelho</label><select id="qoUn">'+
+      DB.unidades.map(u=>'<option value="'+u.id+'"'+(DB.cfg.unidade===u.id?' selected':'')+'>'+esc(u.nome)+'</option>').join('')+'</select>'+
+      '<div class="hint">Tudo que for registrado neste aparelho entra ou sai desta unidade.</div></div>'+
+    '<button class="btn" id="qoOk">'+ic('check',18)+' Pronto</button>');
+  const marca=n=>{ DB.cfg.operador=n; save();
+    $$('#qoLista .chip').forEach(c=>c.classList.toggle('on',c.dataset.qo===n)); };
+  $$('#qoLista .chip').forEach(c=>c.onclick=()=>marca(c.dataset.qo));
+  $('#qoAdd').onclick=()=>{
+    const n=val('qoNovo'); if(!n) return;
+    if(!DB.equipe.includes(n)) DB.equipe.push(n);
+    marca(n); save(); fecha(); quemOpera();
+  };
+  $('#qoUn').onchange=()=>{ DB.cfg.unidade=val('qoUn'); save(); };
+  $('#qoOk').onclick=()=>{ fecha(); atualizaHeader(); RENDER[VIEW]&&RENDER[VIEW]();
+    toast('Operando como '+quem(),'ok'); };
+}
+function atualizaHeader(){ $('#hdWord').innerHTML=wordmark(19,quem()); }
+
+/* =====================================================================
+   CADEADO DO FINANCEIRO
+   O app abre livre; só esta área pede senha.
    ===================================================================== */
 let pin='';
 function drawPin(){
@@ -1538,26 +1601,27 @@ function tecla(k){
   if(k==='del'){ pin=pin.slice(0,-1); drawPin(); return; }
   if(pin.length>=4) return;
   pin+=k; drawPin();
-  if(pin.length===4) setTimeout(tentaLogin,140);
+  if(pin.length===4) setTimeout(confereSenha,140);
 }
-function tentaLogin(){
-  const u=DB.users.find(x=>x.pin===pin&&x.ativo);
-  if(u){ USER=u; sessionStorage.setItem('reobote_user',u.id); entrar(); }
-  else{ $('#lock').classList.add('shake'); vibra([40,60,40]);
+function confereSenha(){
+  if(pin===SENHA_FIN){
+    finLiberado=true; try{sessionStorage.setItem('reobote_fin','1');}catch(e){}
+    pin=''; drawPin(); fechaCadeado(); go('fin');
+  } else {
+    $('#lock').classList.add('shake'); vibra([40,60,40]);
     setTimeout(()=>{$('#lock').classList.remove('shake'); pin=''; drawPin();},430);
-    $('#lockSub').textContent='PIN incorreto — tente de novo';
+    $('#lockSub').textContent='Senha incorreta — tente de novo';
   }
 }
-function entrar(){
-  $('#lock').style.display='none';
-  $('#hdWord').innerHTML=wordmark(19,PAPEIS[USER.papel].nome);
-  const inicial=can('home')?'home':PAPEIS[USER.papel].mods[0];
-  go(inicial);
-}
-function sair(){
-  sessionStorage.removeItem('reobote_user'); USER=null; pin=''; drawPin();
-  $('#lockSub').textContent='Digite seu PIN de acesso';
+function abreCadeado(){
+  pin=''; drawPin();
+  $('#lockSub').textContent='Área restrita — digite a senha';
   $('#lock').style.display='flex';
+}
+function fechaCadeado(){ $('#lock').style.display='none'; }
+function trancarFin(){
+  finLiberado=false; try{sessionStorage.removeItem('reobote_fin');}catch(e){}
+  toast('Financeiro trancado'); go('home');
 }
 
 /* =====================================================================
@@ -1568,6 +1632,9 @@ function init(){
   $('#lockWord').innerHTML=wordmark(34,'');
   $('#btnAlerts').innerHTML=ic('bell',18,'var(--cream-2)')+'<span class="dot hide" id="alertDot"></span>';
   $('#btnUser').innerHTML=ic('user',18,'var(--cream-2)');
+  $('#btnMais').innerHTML=ic('grid',18,'var(--cream-2)');
+  $('#lockSair').onclick=()=>{ fechaCadeado(); go('home'); };
+  atualizaHeader();
   $('#shClose').innerHTML=ic('close',17,'var(--muted)');
   drawPin();
   $('#keys').innerHTML=[1,2,3,4,5,6,7,8,9].map(n=>'<button class="key" data-k="'+n+'">'+n+'</button>').join('')+
@@ -1597,15 +1664,8 @@ function init(){
         :vazio('check','Nenhum alerta','Estoque abastecido, temperatura em dia e nada vencendo.'));
     $('#shBody')._A=A;
   };
-  $('#btnUser').onclick=()=>{
-    sheet(USER.nome,PAPEIS[USER.papel].nome+' · '+gUn(DB.cfg.unidade).nome,
-      '<div class="f"><label>Unidade deste aparelho</label><select id="usUn">'+
-      DB.unidades.map(u=>'<option value="'+u.id+'"'+(DB.cfg.unidade===u.id?' selected':'')+'>'+esc(u.nome)+'</option>').join('')+'</select>'+
-      '<div class="hint">Tudo que você registrar entra ou sai desta unidade.</div></div>'+
-      '<button class="btn ghost" id="usSair">Trocar de usuário</button>');
-    $('#usUn').onchange=()=>{DB.cfg.unidade=val('usUn');save();toast('Unidade: '+gUn(DB.cfg.unidade).nome,'ok');RENDER[VIEW]&&RENDER[VIEW]();};
-    $('#usSair').onclick=()=>{fecha();sair();};
-  };
+  $('#btnUser').onclick=quemOpera;
+  $('#btnMais').onclick=()=>go('mais');
 
   /* botões fixos */
   const B={btnNovaProd:()=>novaProducao(),btnNovoInsumo:()=>editarInsumo(),btnNovaFicha:()=>editarFicha(),
@@ -1641,7 +1701,7 @@ function init(){
     if(el=q('[data-usr]')) return editarUser(el.dataset.usr);
     if(el=q('[data-esttab]')){ estTab=el.dataset.esttab; return RENDER.est(); }
     if(el=q('[data-pedtab]')){ pedTab=el.dataset.pedtab; return RENDER.ped(); }
-    if(t.closest('#btnSair')) return sair();
+    if(t.closest('#btnSair')) return quemOpera();
     if(t.closest('#btnListaCompra')) return listaCompra();
     if(t.closest('#btnExport')) return exportar();
     if(t.closest('#btnImport')) return importar();
@@ -1654,10 +1714,10 @@ function init(){
     }
   });
 
-  /* sessão */
-  const su=sessionStorage.getItem('reobote_user');
-  const u=su&&DB.users.find(x=>x.id===su&&x.ativo);
-  if(u){ USER=u; entrar(); }
+  /* app abre livre; financeiro lembra se já foi destravado nesta sessão */
+  try{ finLiberado=sessionStorage.getItem('reobote_fin')==='1'; }catch(e){}
+  fechaCadeado();
+  go('home');
 
   /* PWA */
   if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
@@ -1716,9 +1776,169 @@ function checaImport(){
     save(); limpar(); vibra(20); toast('Pedido lançado · '+ped.loja,'ok'); go('ped');
   };
 }
-/* entra na fila do login: se já estiver logado, checa agora */
-const _entrar=entrar;
-entrar=function(){ _entrar(); setTimeout(checaImport,260); };
-if(USER) setTimeout(checaImport,300);
-window.addEventListener('hashchange',()=>{ if(USER) checaImport(); });
+setTimeout(checaImport,300);
+window.addEventListener('hashchange',checaImport);
+</script>
+
+<script>
+/* =====================================================================
+   FINANCEIRO
+   Receita  = vendas lançadas no caixa + pedidos entregues
+   Custo    = custo de produção das bateladas do período
+   Despesas = contas da operação (aluguel, energia, folha...)
+   Perdas   = quebra, vencimento e derretimento, ao custo real
+   ===================================================================== */
+const CAT_DESP=[['aluguel','Aluguel'],['energia','Energia'],['agua','Água'],['folha','Salários'],
+  ['imposto','Impostos'],['manutencao','Manutenção'],['entrega','Entrega/combustível'],
+  ['marketing','Marketing'],['outro','Outros']];
+
+let finPer='mes';
+function periodo(){
+  const h=new Date(), y=h.getFullYear(), m=h.getMonth();
+  if(finPer==='mes')      return [new Date(y,m,1), new Date(y,m+1,0), 'Este mês'];
+  if(finPer==='anterior') return [new Date(y,m-1,1), new Date(y,m,0), 'Mês passado'];
+  if(finPer==='tri')      return [new Date(y,m-2,1), new Date(y,m+1,0), 'Últimos 3 meses'];
+  return [new Date(y,0,1), new Date(y,11,31), 'Este ano'];
+}
+const iso=d=>d.toISOString().slice(0,10);
+const dentro=(dt,de,ate)=>{ const d=String(dt||'').slice(0,10); return d>=iso(de)&&d<=iso(ate); };
+
+function resumoFin(de,ate){
+  const vendas =DB.caixa.filter(c=>dentro(c.data,de,ate)).reduce((s,c)=>s+c.valor,0);
+  const entreg =DB.pedidos.filter(p=>p.status==='entregue'&&dentro(p.data,de,ate)).reduce((s,p)=>s+p.total,0);
+  const custo  =DB.producoes.filter(p=>dentro(p.data,de,ate)).reduce((s,p)=>s+(p.custo||0),0);
+  const desp   =DB.despesas.filter(d=>dentro(d.data,de,ate)).reduce((s,d)=>s+d.valor,0);
+  const perdas =DB.perdas.filter(p=>dentro(p.data,de,ate)).reduce((s,p)=>s+p.valor,0);
+  const receita=vendas+entreg;
+  const lucro  =receita-custo-desp-perdas;
+  return {vendas,entreg,receita,custo,desp,perdas,lucro,margem:receita?lucro/receita*100:0};
+}
+
+RENDER.fin=()=>{
+  const [de,ate,rot]=periodo();
+  const R=resumoFin(de,ate);
+
+  $('#finTabs').innerHTML=[['mes','Este mês'],['anterior','Mês passado'],['tri','3 meses'],['ano','Este ano']]
+    .map(([k,l])=>'<button class="chip'+(finPer===k?' on':'')+'" data-fintab="'+k+'">'+l+'</button>').join('');
+
+  const pos=R.lucro>=0;
+  $('#finResumo').innerHTML='<div class="hero" style="margin-bottom:10px">'+
+    '<div class="hi">'+rot+' · lucro'+(pos?'':' (prejuízo)')+'</div>'+
+    '<div class="hn mono" style="color:var(--'+(pos?'ok':'bad')+');font-size:32px">'+money(Math.abs(R.lucro))+'</div>'+
+    '<div class="hd">'+
+      '<div><div class="hl">Faturamento</div><div class="hv mono">'+money(R.receita).replace('R$ ','R$')+'</div></div>'+
+      '<div><div class="hl">Margem</div><div class="hv mono">'+num(R.margem,0)+'<small>%</small></div></div>'+
+    '</div></div>';
+
+  const linha=(nome,sub,valor,cor,sinal)=>'<div class="dl"><div class="dn">'+nome+'<small>'+sub+'</small></div>'+
+    '<div class="dv mono" style="color:var(--'+cor+')">'+(sinal||'')+money(valor)+'</div></div>';
+  $('#finDemo').innerHTML=
+    linha('Vendas no balcão','fechamento de caixa das lojas',R.vendas,'cream','+')+
+    linha('Pedidos entregues','revendas e distribuição',R.entreg,'cream','+')+
+    linha('Custo de produção','insumo e embalagem das bateladas',R.custo,'muted','−')+
+    linha('Despesas','contas fixas e variáveis',R.desp,'muted','−')+
+    linha('Perdas','quebra, vencimento, derretimento',R.perdas,'bad','−')+
+    '<div class="dl tot"><div class="dn">'+(pos?'Lucro':'Prejuízo')+'<small>'+rot.toLowerCase()+'</small></div>'+
+    '<div class="dv mono" style="color:var(--'+(pos?'ok':'bad')+')">'+money(R.lucro)+'</div></div>';
+
+  /* gráfico dos últimos 6 meses */
+  const hj=new Date(), meses=[];
+  for(let i=5;i>=0;i--){
+    const d1=new Date(hj.getFullYear(),hj.getMonth()-i,1), d2=new Date(hj.getFullYear(),hj.getMonth()-i+1,0);
+    const r=resumoFin(d1,d2);
+    meses.push({lb:d1.toLocaleDateString('pt-BR',{month:'short'}).replace('.',''),rec:r.receita,luc:r.lucro});
+  }
+  const topo=Math.max(...meses.map(m=>m.rec),1);
+  $('#finGraf').innerHTML='<div class="card" style="padding:10px 12px 14px"><div class="graf">'+
+    meses.map(m=>{
+      const hRec=Math.max(3,m.rec/topo*100), hLuc=m.rec?Math.max(0,Math.min(100,Math.abs(m.luc)/m.rec*100)):0;
+      return '<div class="gcol"><div class="gtrack"><div class="gbar" style="height:'+hRec+'%">'+
+        '<i class="'+(m.luc<0?'neg':'')+'" style="height:'+hLuc+'%"></i></div></div><span>'+m.lb+'</span></div>';
+    }).join('')+'</div>'+
+    '<div style="display:flex;gap:16px;justify-content:center;font-size:10.5px;color:var(--muted-2);font-weight:700;margin-top:6px">'+
+    '<span>'+'<i style="display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--plum-700);margin-right:5px"></i>faturamento</span>'+
+    '<span><i style="display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--orange);margin-right:5px"></i>lucro (vermelho = prejuízo)</span></div></div>';
+
+  $('#finAcoes').innerHTML=
+    '<button class="qk" id="btnVenda"><div class="qi">'+ic('store',21,'var(--ok)')+'</div><span>Venda do dia<br>(balcão)</span></button>'+
+    '<button class="qk" id="btnDespesa2"><div class="qi">'+ic('money',21,'var(--bad)')+'</div><span>Conta<br>a pagar</span></button>';
+
+  const L=DB.despesas.filter(d=>dentro(d.data,de,ate)).sort((a,b)=>b.ts-a.ts);
+  $('#finDespesas').innerHTML=L.length?L.map(d=>{
+    const cat=(CAT_DESP.find(c=>c[0]===d.cat)||['','Outros'])[1];
+    return '<button class="item" data-desp="'+d.id+'"><div class="ic">'+ic('money',18,'var(--muted)')+'</div>'+
+      '<div class="bd"><div class="t">'+esc(d.desc)+'</div><div class="s">'+cat+' · '+fmtD(d.data)+
+      (d.fixa?' · <span class="tag">fixa</span>':'')+'</div></div>'+
+      '<div class="rt"><div class="rv mono" style="color:var(--bad)">−'+money(d.valor)+'</div></div></button>';
+  }).join(''):vazio('money','Nenhuma despesa no período','Lance aluguel, energia, salários e o app calcula o lucro real.');
+};
+
+function novaDespesa(id){
+  const d=id?DB.despesas.find(x=>x.id===id):{id:'',desc:'',cat:'outro',valor:0,data:hoje(),fixa:0};
+  sheet(id?'Editar despesa':'Nova despesa','Conta da operação',
+    '<div class="f"><label>Descrição</label><input id="dD" value="'+esc(d.desc)+'" placeholder="Ex.: Energia da loja" autofocus></div>'+
+    '<div class="f2"><div class="f"><label>Valor</label><input id="dV" type="number" inputmode="decimal" value="'+(d.valor||'')+'"></div>'+
+    '<div class="f"><label>Data</label><input id="dT" type="date" value="'+d.data+'"></div></div>'+
+    '<div class="f"><label>Categoria</label><select id="dC">'+
+      CAT_DESP.map(([v,l])=>'<option value="'+v+'"'+(d.cat===v?' selected':'')+'>'+l+'</option>').join('')+'</select></div>'+
+    '<div class="f"><label>Tipo</label><div class="chips" id="dF">'+
+      [[0,'Avulsa'],[1,'Fixa (todo mês)']].map(([v,l])=>
+      '<button class="chip'+(d.fixa==v?' on':'')+'" data-df="'+v+'">'+l+'</button>').join('')+'</div></div>'+
+    '<button class="btn" id="dSalvar">'+ic('check',18)+' Salvar</button>'+
+    (id?'<button class="btn danger" id="dDel" style="margin-top:9px">Excluir</button>':''));
+  let fixa=d.fixa;
+  $$('#dF .chip').forEach(c=>c.onclick=()=>{$$('#dF .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');fixa=+c.dataset.df;});
+  $('#dSalvar').onclick=()=>{
+    const desc=val('dD'), v=nval('dV');
+    if(!desc||v<=0){ toast('Informe descrição e valor','bad'); return; }
+    const o={id:d.id||uid(),desc,cat:val('dC'),valor:v,data:val('dT'),fixa,ts:Date.now(),quem:quem()};
+    if(id) Object.assign(DB.despesas.find(x=>x.id===id),o); else DB.despesas.push(o);
+    save(); fecha(); toast('Despesa lançada','ok'); RENDER.fin();
+  };
+  if(id) $('#dDel').onclick=()=>{ if(!confirm('Excluir despesa?'))return;
+    DB.despesas=DB.despesas.filter(x=>x.id!==id); save(); fecha(); RENDER.fin(); };
+}
+
+function novaVenda(){
+  const j=DB.caixa.find(c=>c.data===hoje()&&c.uid===DB.cfg.unidade);
+  sheet('Venda do dia','Fechamento de caixa da loja',
+    '<div class="f"><label>Unidade</label><select id="vU">'+
+      DB.unidades.map(u=>'<option value="'+u.id+'"'+(DB.cfg.unidade===u.id?' selected':'')+'>'+esc(u.nome)+'</option>').join('')+'</select></div>'+
+    '<div class="f2"><div class="f"><label>Total vendido</label><input id="vV" type="number" inputmode="decimal" value="'+(j?j.valor:'')+'" autofocus></div>'+
+    '<div class="f"><label>Data</label><input id="vD" type="date" value="'+hoje()+'"></div></div>'+
+    '<div class="f"><label>Observação</label><input id="vO" placeholder="opcional"></div>'+
+    (j?'<div class="alert warn" style="margin-bottom:13px">'+ic('alert',17,'var(--warn)')+
+      '<div style="flex:1"><div class="at">Já existe lançamento hoje</div><div class="ad">'+money(j.valor)+
+      ' nesta unidade. Salvar substitui o valor.</div></div></div>':'')+
+    '<button class="btn ok" id="vSalvar">'+ic('check',18)+' Registrar venda</button>');
+  $('#vSalvar').onclick=()=>{
+    const v=nval('vV'); if(v<=0){ toast('Informe o valor','bad'); return; }
+    const u=val('vU'), dt=val('vD');
+    const ex=DB.caixa.find(c=>c.data===dt&&c.uid===u);
+    if(ex){ ex.valor=v; ex.obs=val('vO'); ex.ts=Date.now(); }
+    else DB.caixa.push({id:uid(),uid:u,data:dt,valor:v,obs:val('vO'),ts:Date.now(),quem:quem()});
+    save(); fecha(); vibra(); toast('Venda registrada · '+money(v),'ok'); RENDER.fin();
+  };
+}
+</script>
+
+<script>
+/* eventos do financeiro e da equipe */
+document.addEventListener('click',e=>{
+  const t=e.target, q=sel=>t.closest(sel);
+  let el;
+  if(q('#btnTrancar'))      return trancarFin();
+  if(q('#btnNovaDespesa'))  return novaDespesa();
+  if(q('#btnDespesa2'))     return novaDespesa();
+  if(q('#btnVenda'))        return novaVenda();
+  if(el=q('[data-fintab]')){ finPer=el.dataset.fintab; return RENDER.fin(); }
+  if(el=q('[data-desp]'))    return novaDespesa(el.dataset.desp);
+  if(el=q('[data-eqx]')){
+    const n=el.dataset.eqx;
+    if(!confirm('Remover '+n+' da lista?')) return;
+    DB.equipe=DB.equipe.filter(x=>x!==n);
+    if(DB.cfg.operador===n) DB.cfg.operador=DB.equipe[0]||'Equipe';
+    save(); atualizaHeader(); return RENDER.equipe();
+  }
+});
 </script>
