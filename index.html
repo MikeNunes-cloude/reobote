@@ -478,11 +478,8 @@ let LOGO_OK=false;
 function oMark(sz){
   sz=sz||19;
   return '<span class="o-mark" style="width:'+sz+'px;height:'+sz+'px">'+
-    '<svg viewBox="0 0 24 24" width="'+sz+'" height="'+sz+'">'+
-    '<circle cx="12" cy="12" r="11.5" fill="#E8924C"/>'+
-    '<path d="M5.4 10.4h13.2" stroke="#F8EFE7" stroke-width="2.2" stroke-linecap="round"/>'+
-    '<path d="M7.9 10.9v1.3a4.1 4.1 0 0 0 8.2 0v-1.3" fill="none" stroke="#F8EFE7" stroke-width="2.2" stroke-linecap="round"/>'+
-    '</svg></span>';
+    '<svg viewBox="0 0 24 24" width="'+sz+'" height="'+sz+'">'+'<g fill="none" stroke="#F2731C" stroke-width="2">'+'<circle cx="12" cy="12" r="7.4" stroke-dasharray="42.6 3.9" transform="rotate(-16 12 12)"/>'+'<path d="M3.2 12h17.4" stroke-linecap="round"/>'+'<path d="M8.3 12a3.7 3.7 0 0 0 7.4 0"/>'+'</g></svg>'+
+    '</span>';
 }
 function wordmark(size,tag){
   const s=size||19;
