@@ -10,17 +10,35 @@ HTML puro + PWA, sem build. Mesma stack do New Wash.
 | `index.html` | app de gestão (dono e funcionários) |
 | `pedidos.html` | portal do cliente — revenda monta o pedido sozinha |
 | `manifest.webmanifest` / `sw.js` | instalação na tela de início + funcionamento offline |
+| `supabase-pedidos.sql` | cria a tabela dos pedidos em tempo real (rodar uma vez) |
 | `assets/` | ícones |
 
 ## Acesso
 
-O app **abre direto, sem senha** — a equipe usa o dia todo sem barreira.
+O app **abre direto, sem senha e sem perfil** — é da equipe inteira, não do dono.
 
 A única área trancada é o **Financeiro**, com a senha **2409**.
 Uma vez digitada, ela vale até fechar o app; o botão "trancar" fecha antes disso.
 
-Quem está operando é escolhido no ícone de pessoa do topo (sem senha). Serve só para
-assinar quem registrou cada produção, perda e leitura de temperatura.
+O que cada aparelho define é a **unidade** onde está (ícone de loja no topo). Todo
+registro feito nele entra ou sai daquela unidade.
+
+## Pedidos em tempo real — PASSO OBRIGATÓRIO
+
+O pedido feito no portal aparece no app **na hora**, com som e notificação. Para isso
+funcionar é preciso criar a tabela uma única vez:
+
+1. Abra o painel do Supabase → **SQL Editor**
+2. Cole o conteúdo de **`supabase-pedidos.sql`** (está nesta pasta)
+3. **Run**
+
+Enquanto isso não for feito, o app avisa em Configurações e o portal manda o pedido
+pelo WhatsApp como reserva — o cliente nunca fica sem conseguir pedir.
+
+Depois de criada a tabela, cada celular precisa tocar uma vez em
+**Configurações → Ligar notificação neste aparelho** para receber o aviso com som.
+
+Só os pedidos passam pela nuvem. Produção, estoque e financeiro continuam no aparelho.
 
 ## Como o negócio está montado no app
 

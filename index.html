@@ -402,11 +402,6 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
     <div class="sec">Margem por item</div><div id="custoList"></div>
   </div>
 
-  <div class="view" id="v-equipe">
-    <div class="sec"><button data-back="mais">&larr; voltar</button><span class="sp"></span><button id="btnNovoUser">+ pessoa</button></div>
-    <div id="userList"></div>
-  </div>
-
   <div class="view" id="v-config">
     <div class="sec"><button data-back="mais">&larr; voltar</button><span class="sp"></span></div>
     <div id="cfgBody"></div>
@@ -425,6 +420,7 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
 </div>
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* =====================================================================
    REOBOTE — Gestão interna  ·  v1.0
@@ -574,7 +570,7 @@ let DB=null, VIEW='home';
 const SENHA_FIN='2409';
 let finLiberado=false;
 
-const quem=()=>(DB&&DB.cfg.operador)||'Equipe';
+const quem=()=>gUn(DB.cfg.unidade).nome;   /* o registro é assinado pela unidade, não por pessoa */
 const can=()=>true;
 
 function seed(){
@@ -589,8 +585,7 @@ function seed(){
     insumos:[], fichas:[], clientes:[], freezers:[],
     producoes:[], estoque:[], transf:[], perdas:[], temps:[], pedidos:[],
     despesas:[], caixa:[],
-    equipe:['Proprietário'],
-    cfg:{unidade:'u1', operador:'Proprietário', metaLitrosDia:0, alertaValidade:15, versao:'2.0'},
+    cfg:{unidade:'u1', metaLitrosDia:0, alertaValidade:15, versao:'2.1'},
   };
 }
 
@@ -607,10 +602,7 @@ function load(){
   /* limpa os dados de exemplo da v1 */
   if(ehDemo(DB)){ DB=base; }
   /* migração da v1.0 (que tinha login por PIN) */
-  if(!DB.equipe) DB.equipe=(DB.users||[]).map(u=>u.nome).filter(Boolean);
-  if(!DB.equipe.length) DB.equipe=base.equipe;
-  delete DB.users;
-  if(!DB.cfg.operador) DB.cfg.operador=DB.equipe[0];
+  delete DB.users; delete DB.equipe; delete DB.cfg.operador;
   if(!DB.despesas) DB.despesas=[];
   if(!DB.caixa) DB.caixa=[];
   DB.cfg.versao=base.cfg.versao;
@@ -883,11 +875,10 @@ RENDER.mais=()=>{
   $('#maisOp').innerHTML=[linha('transf','truck','Transferências','Fábrica → loja com aceite'),
     linha('perdas','trash','Perdas e quebras','Derretimento, validade, avaria'),
     linha('frio','thermo','Cadeia de frio','Freezers e leitura de temperatura')].join('');
-  $('#maisGest').innerHTML=[linha('custos','money','Custos e margem','Quanto sobra em cada item'),
-    linha('equipe','users','Equipe','Acessos e PINs')].join('');
+  $('#maisGest').innerHTML=[linha('custos','money','Custos e margem','Quanto sobra em cada item')].join('');
   $('#maisSis').innerHTML=[linha('config','gear','Configurações','Unidade, metas e dados'),
-    '<button class="item" id="btnSair"><div class="ic">'+ic('user',18,'var(--muted)')+'</div>'+
-    '<div class="bd"><div class="t">Quem está operando</div><div class="s">'+esc(quem())+' · '+gUn(DB.cfg.unidade).nome+'</div></div>'+
+    '<button class="item" id="btnSair"><div class="ic">'+ic('store',18,'var(--orange)')+'</div>'+
+    '<div class="bd"><div class="t">Trocar de unidade</div><div class="s">'+esc(gUn(DB.cfg.unidade).nome)+'</div></div>'+
     ic('chevron',16,'var(--muted-2)')+'</button>'].join('');
   $('#verTxt').innerHTML='Reobote Gestão v'+DB.cfg.versao+'<br>Sorvetes &amp; Açaí · Poços de Caldas';
 };
@@ -1016,19 +1007,6 @@ RENDER.custos=()=>{
   }).join('')||vazio('money','Nada para comparar ainda','A margem aparece quando o produto tem preço de venda E receita cadastrada — sem receita, o app não sabe quanto custa produzir.');
 };
 
-/* ---------- EQUIPE ---------- */
-RENDER.equipe=()=>{
-  $('#userList').innerHTML='<div class="card" style="margin-bottom:12px;font-size:12.5px;color:var(--muted);line-height:1.55">'+
-      'O app abre sem senha para todo mundo. Estes nomes servem para assinar quem registrou cada produção, perda e leitura de temperatura.'+
-      '<br><br>Só o <b style="color:var(--orange-soft)">Financeiro</b> pede senha.</div>'+
-    DB.equipe.map(n=>
-      '<div class="item"><div class="ic">'+ic('user',18,'var(--orange)')+'</div>'+
-      '<div class="bd"><div class="t">'+esc(n)+'</div>'+
-      '<div class="s">'+(quem()===n?'operando neste aparelho':'&nbsp;')+'</div></div>'+
-      (DB.equipe.length>1?'<button data-eqx="'+esc(n)+'" style="width:32px;height:32px;display:grid;place-items:center">'+
-        ic('close',15,'var(--bad)')+'</button>':'')+'</div>').join('');
-};
-
 /* ---------- CONFIG ---------- */
 RENDER.config=()=>{
   $('#cfgBody').innerHTML=
@@ -1042,6 +1020,25 @@ RENDER.config=()=>{
     DB.unidades.map(u=>'<div class="item"><div class="ic">'+ic(u.tipo==='fabrica'?'factory':u.tipo==='loja'?'store':'truck',18,'var(--muted)')+
       '</div><div class="bd"><div class="t">'+esc(u.nome)+'</div><div class="s">'+u.tipo+'</div></div></div>').join('')+
     '<button class="btn ghost sm" id="btnNovaUnid" style="width:100%;margin-top:6px">'+ic('plus',15)+' Nova unidade</button>'+
+    '<div class="sec">Pedidos em tempo real</div>'+
+    (function(){
+      const perm=('Notification' in window)?Notification.permission:'indisponivel';
+      const ok=nuvem.ligado&&!nuvem.erro;
+      return '<div class="alert '+(ok?'ok':nuvem.erro?'bad':'warn')+'" style="margin-bottom:10px">'+
+        ic(ok?'check':'alert',18,'var(--'+(ok?'ok':nuvem.erro?'bad':'warn')+')')+
+        '<div style="flex:1"><div class="at">'+(ok?'Conectado à nuvem'
+          :nuvem.erro?'Nuvem indisponível':'Conectando...')+'</div>'+
+        '<div class="ad">'+(ok?'Pedido feito no portal aparece aqui na hora.'
+          :nuvem.erro==='tabela ainda não criada no Supabase'
+            ?'Falta rodar o arquivo supabase-pedidos.sql no painel do Supabase — depois disso funciona sozinho.'
+            :esc(nuvem.erro||'aguarde alguns segundos'))+'</div></div></div>'+
+      (perm==='granted'
+        ?'<div class="alert ok" style="margin-bottom:10px">'+ic('bell',18,'var(--ok)')+
+         '<div style="flex:1"><div class="at">Notificação ligada</div>'+
+         '<div class="ad">Este aparelho avisa com som quando entra pedido.</div></div></div>'
+        :'<button class="btn ghost" id="btnNotif">'+ic('bell',17)+
+         (perm==='denied'?' Notificação bloqueada no navegador':' Ligar notificação neste aparelho')+'</button>');
+    })()+
     '<div class="sec">Portal de pedidos</div>'+
     '<div class="card" style="margin-bottom:10px;font-size:12.5px;color:var(--muted);line-height:1.55">'+
       'O portal do cliente mostra os produtos que tiverem <b style="color:var(--cream-2)">preço de venda</b> cadastrado. '+
@@ -1051,8 +1048,9 @@ RENDER.config=()=>{
     '<button class="btn ghost" id="btnExport">'+ic('down',17)+' Exportar backup (JSON)</button>'+
     '<div class="btnrow"><button class="btn ghost" id="btnImport">Importar backup</button>'+
     '<button class="btn danger" id="btnReset">Zerar tudo</button></div>'+
-    '<div class="hint" style="margin-top:12px;color:var(--muted-2);font-size:11px;line-height:1.5">Os dados ficam neste aparelho. '+
-    'Na próxima etapa ligamos o Supabase para sincronizar entre fábrica, lojas e entregadores.</div>';
+    '<div class="hint" style="margin-top:12px;color:var(--muted-2);font-size:11px;line-height:1.5">'+
+    'Produção, estoque e financeiro ficam neste aparelho — faça o backup de vez em quando. '+
+    'Os pedidos do portal são os únicos que passam pela nuvem, para chegarem na hora em todos os celulares.</div>';
 };
 </script>
 
@@ -1637,16 +1635,6 @@ function abrirPedido(id){
 /* =====================================================================
    EQUIPE / CONFIG
    ===================================================================== */
-function editarUser(){
-  sheet('Nova pessoa','Sem senha — só o nome de quem opera',
-    '<div class="f"><label>Nome</label><input id="uN" placeholder="Ex.: Marcos" autofocus></div>'+
-    '<button class="btn" id="uSalvar">'+ic('check',18)+' Adicionar</button>');
-  $('#uSalvar').onclick=()=>{
-    const nome=val('uN'); if(!nome){ toast('Informe o nome','bad'); return; }
-    if(!DB.equipe.includes(nome)) DB.equipe.push(nome);
-    save(); fecha(); toast('Pessoa adicionada','ok'); RENDER.equipe();
-  };
-}
 function exportar(){
   const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
@@ -1669,31 +1657,19 @@ function importar(){
 /* =====================================================================
    QUEM ESTÁ OPERANDO (sem senha — só para assinar os registros)
    ===================================================================== */
-function quemOpera(){
-  sheet('Quem está operando','Sem senha — só para o registro ficar assinado',
-    '<div class="f"><label>Pessoa</label><div class="chips" id="qoLista">'+
-      DB.equipe.map(n=>'<button class="chip'+(quem()===n?' on':'')+'" data-qo="'+esc(n)+'">'+esc(n)+'</button>').join('')+
-    '</div></div>'+
-    '<div class="f"><label>Adicionar pessoa</label>'+
-      '<div style="display:flex;gap:9px"><input id="qoNovo" placeholder="Nome de quem trabalha aqui">'+
-      '<button class="btn sm" id="qoAdd" style="flex:none">'+ic('plus',16)+'</button></div></div>'+
-    '<div class="f"><label>Unidade deste aparelho</label><select id="qoUn">'+
-      DB.unidades.map(u=>'<option value="'+u.id+'"'+(DB.cfg.unidade===u.id?' selected':'')+'>'+esc(u.nome)+'</option>').join('')+'</select>'+
-      '<div class="hint">Tudo que for registrado neste aparelho entra ou sai desta unidade.</div></div>'+
-    '<button class="btn" id="qoOk">'+ic('check',18)+' Pronto</button>');
-  const marca=n=>{ DB.cfg.operador=n; save();
-    $$('#qoLista .chip').forEach(c=>c.classList.toggle('on',c.dataset.qo===n)); };
-  $$('#qoLista .chip').forEach(c=>c.onclick=()=>marca(c.dataset.qo));
-  $('#qoAdd').onclick=()=>{
-    const n=val('qoNovo'); if(!n) return;
-    if(!DB.equipe.includes(n)) DB.equipe.push(n);
-    marca(n); save(); fecha(); quemOpera();
-  };
-  $('#qoUn').onchange=()=>{ DB.cfg.unidade=val('qoUn'); save(); };
-  $('#qoOk').onclick=()=>{ fecha(); atualizaHeader(); RENDER[VIEW]&&RENDER[VIEW]();
-    toast('Operando como '+quem(),'ok'); };
+function trocarUnidade(){
+  sheet('Unidade deste aparelho','Onde este celular está sendo usado',
+    '<div class="f"><div class="chips" id="tuLista" style="flex-direction:column;align-items:stretch">'+
+      DB.unidades.map(u=>'<button class="chip'+(DB.cfg.unidade===u.id?' on':'')+'" data-tu="'+u.id+'" '+
+        'style="justify-content:flex-start;padding:14px">'+
+        ic(u.tipo==='fabrica'?'factory':u.tipo==='loja'?'store':'truck',17)+esc(u.nome)+'</button>').join('')+
+    '</div><div class="hint">Toda entrada e saída registrada neste aparelho vale para a unidade escolhida.</div></div>');
+  $$('#tuLista .chip').forEach(c=>c.onclick=()=>{
+    DB.cfg.unidade=c.dataset.tu; save(); fecha(); atualizaHeader();
+    RENDER[VIEW]&&RENDER[VIEW](); toast(gUn(DB.cfg.unidade).nome,'ok');
+  });
 }
-function atualizaHeader(){ $('#hdWord').innerHTML=wordmark(19,quem()); }
+function atualizaHeader(){ $('#hdWord').innerHTML=wordmark(19,gUn(DB.cfg.unidade).nome); }
 
 /* =====================================================================
    CADEADO DO FINANCEIRO
@@ -1738,7 +1714,7 @@ function init(){
   load();
   $('#lockWord').innerHTML=wordmark(34,'');
   $('#btnAlerts').innerHTML=ic('bell',18,'var(--cream-2)')+'<span class="dot hide" id="alertDot"></span>';
-  $('#btnUser').innerHTML=ic('user',18,'var(--cream-2)');
+  $('#btnUser').innerHTML=ic('store',18,'var(--cream-2)');
   $('#btnMais').innerHTML=ic('grid',18,'var(--cream-2)');
   $('#lockSair').onclick=()=>{ fechaCadeado(); go('home'); };
   atualizaHeader();
@@ -1771,13 +1747,13 @@ function init(){
         :vazio('check','Nenhum alerta','Estoque abastecido, temperatura em dia e nada vencendo.'));
     $('#shBody')._A=A;
   };
-  $('#btnUser').onclick=quemOpera;
+  $('#btnUser').onclick=trocarUnidade;
   $('#btnMais').onclick=()=>go('mais');
 
   /* botões fixos */
   const B={btnNovaProd:()=>novaProducao(),btnNovoInsumo:()=>editarInsumo(),btnNovaFicha:()=>editarFicha(),
     btnNovaTransf:novaTransf,btnNovaPerda:()=>novaPerda(),btnNovoFreezer:()=>editarFreezer(),
-    btnNovoCliente:()=>editarCliente(),btnNovoPed:()=>novoPedido(),btnNovoUser:()=>editarUser(),
+    btnNovoCliente:()=>editarCliente(),btnNovoPed:()=>novoPedido(),
     btnUnidSel:()=>$('#btnUser').onclick()};
   Object.entries(B).forEach(([id,fn])=>{const e=$('#'+id); if(e) e.onclick=fn;});
 
@@ -1805,10 +1781,9 @@ function init(){
     if(el=q('[data-fz]')) return abrirFreezer(el.dataset.fz);
     if(el=q('[data-cli]')) return abrirCliente(el.dataset.cli);
     if(el=q('[data-ped]')) return abrirPedido(el.dataset.ped);
-    if(el=q('[data-usr]')) return editarUser(el.dataset.usr);
     if(el=q('[data-esttab]')){ estTab=el.dataset.esttab; return RENDER.est(); }
     if(el=q('[data-pedtab]')){ pedTab=el.dataset.pedtab; return RENDER.ped(); }
-    if(t.closest('#btnSair')) return quemOpera();
+    if(t.closest('#btnSair')) return trocarUnidade();
     if(t.closest('#btnListaCompra')) return listaCompra();
     if(t.closest('#btnExport')) return exportar();
     if(t.closest('#btnImport')) return importar();
@@ -2094,13 +2069,6 @@ document.addEventListener('click',e=>{
   if(q('#btnVenda'))        return novaVenda();
   if(el=q('[data-fintab]')){ finPer=el.dataset.fintab; return RENDER.fin(); }
   if(el=q('[data-desp]'))    return novaDespesa(el.dataset.desp);
-  if(el=q('[data-eqx]')){
-    const n=el.dataset.eqx;
-    if(!confirm('Remover '+n+' da lista?')) return;
-    DB.equipe=DB.equipe.filter(x=>x!==n);
-    if(DB.cfg.operador===n) DB.cfg.operador=DB.equipe[0]||'Equipe';
-    save(); atualizaHeader(); return RENDER.equipe();
-  }
 });
 </script>
 
@@ -2151,4 +2119,108 @@ function gerarCatalogo(){
   $('#cgCopiar').onclick=()=>{ navigator.clipboard.writeText(json); toast('Copiado','ok'); };
 }
 document.addEventListener('click',e=>{ if(e.target.closest('#btnCatalogo')) gerarCatalogo(); });
+</script>
+
+<script>
+/* =====================================================================
+   PEDIDOS EM TEMPO REAL
+   O portal do cliente grava o pedido na nuvem. Este app escuta e avisa
+   na hora — sem passar pelo WhatsApp, sem ninguém digitar de novo.
+   Se a nuvem estiver fora, o app segue funcionando local.
+   ===================================================================== */
+const SB_URL='https://dgfoojpcgywrkhfqlfxd.supabase.co';
+const SB_KEY='sb_publishable_16cjr1tvjRLcyTiQTr9IbQ_ui3Q1bEA';
+let sb=null, nuvem={ligado:false,erro:'',ultima:0};
+
+function iniciaNuvem(){
+  try{
+    if(!window.supabase) throw new Error('sem conexão para carregar a nuvem');
+    sb=window.supabase.createClient(SB_URL,SB_KEY);
+  }catch(e){ nuvem.erro='sem conexão'; return; }
+
+  /* chegada instantânea */
+  try{
+    sb.channel('reobote-pedidos')
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'reobote_pedidos'},
+        p=>recebePedido(p.new,true))
+      .subscribe(st=>{ nuvem.ligado=(st==='SUBSCRIBED'); if(VIEW==='config') RENDER.config(); });
+  }catch(e){}
+
+  /* rede de segurança: se o tempo real cair, ainda buscamos */
+  puxaPedidos();
+  setInterval(puxaPedidos,20000);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) puxaPedidos(); });
+}
+
+async function puxaPedidos(){
+  if(!sb) return;
+  try{
+    const desde=new Date(Date.now()-30*864e5).toISOString();
+    const {data,error}=await sb.from('reobote_pedidos').select('*')
+      .gte('criado_em',desde).order('criado_em',{ascending:false}).limit(200);
+    if(error) throw error;
+    nuvem.erro=''; nuvem.ultima=Date.now();
+    let novos=0;
+    (data||[]).forEach(r=>{ if(recebePedido(r,false)) novos++; });
+    if(novos){ save(); avisaPedido(novos); RENDER[VIEW]&&RENDER[VIEW](); renderNav(); }
+  }catch(e){
+    nuvem.erro=(e&&e.message||'').includes('reobote_pedidos')
+      ? 'tabela ainda não criada no Supabase' : 'sem conexão com a nuvem';
+    if(VIEW==='config') RENDER.config();
+  }
+}
+
+/* grava o pedido no app; devolve true se era inédito */
+function recebePedido(r,avisar){
+  if(!r||!r.id) return false;
+  if(DB.pedidos.some(p=>p.nuvemId===r.id)) return false;
+  let c=DB.clientes.find(x=>x.nome.toLowerCase()===String(r.loja||'').toLowerCase());
+  if(!c){ c={id:'c'+uid(),nome:r.loja||'Cliente',contato:r.tel||'',end:'',cidade:'',tipo:'mercado',ativo:1};
+    DB.clientes.push(c); }
+  else if(r.tel && !c.contato) c.contato=r.tel;
+  DB.pedidos.push({id:uid(),nuvemId:r.id,cid:c.id,
+    itens:(r.itens||[]).map(i=>({fid:i.fid,qtd:i.qtd,preco:i.preco})),
+    status:r.status||'novo',data:r.criado_em||new Date().toISOString(),
+    ts:new Date(r.criado_em||Date.now()).getTime(),total:+r.total||0,
+    origem:'portal',entrega:r.entrega||'',obs:r.obs||'',quem:r.resp||r.loja||''});
+  if(avisar){ save(); avisaPedido(1,r); RENDER[VIEW]&&RENDER[VIEW](); renderNav(); }
+  return true;
+}
+
+/* ---------- o aviso ---------- */
+function bip(){
+  try{
+    const A=new (window.AudioContext||window.webkitAudioContext)();
+    [0,0.18].forEach((t,ix)=>{
+      const o=A.createOscillator(), g=A.createGain();
+      o.type='sine'; o.frequency.value=ix?1046:784;
+      g.gain.setValueAtTime(0.0001,A.currentTime+t);
+      g.gain.exponentialRampToValueAtTime(0.22,A.currentTime+t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,A.currentTime+t+0.16);
+      o.connect(g); g.connect(A.destination);
+      o.start(A.currentTime+t); o.stop(A.currentTime+t+0.18);
+    });
+    setTimeout(()=>A.close(),800);
+  }catch(e){}
+}
+function avisaPedido(n,r){
+  bip(); vibra([60,50,60,50,120]);
+  const titulo=n>1?n+' pedidos novos':'Pedido novo';
+  const corpo=r?((r.loja||'Cliente')+' · '+money(+r.total||0)):'Chegaram pelo portal do cliente';
+  try{
+    if('Notification' in window && Notification.permission==='granted')
+      new Notification(titulo,{body:corpo,icon:'assets/icon-192.png',badge:'assets/icon-192.png',
+        tag:'reobote-pedido',renotify:true});
+  }catch(e){}
+  toast(titulo+' · '+corpo,'ok');
+  const b=$('#btnAlerts'); if(b){ b.style.transform='scale(1.18)'; setTimeout(()=>b.style.transform='',260); }
+}
+async function pedeNotificacao(){
+  if(!('Notification' in window)){ toast('Este aparelho não suporta notificação','bad'); return; }
+  const r=await Notification.requestPermission();
+  toast(r==='granted'?'Notificação ligada neste aparelho':'Você bloqueou as notificações', r==='granted'?'ok':'bad');
+  if(VIEW==='config') RENDER.config();
+}
+document.addEventListener('click',e=>{ if(e.target.closest('#btnNotif')) pedeNotificacao(); });
+setTimeout(iniciaNuvem,600);
 </script>

@@ -129,6 +129,7 @@ main{padding:12px 16px 0}
   background:var(--plum);color:var(--cream);padding:13px 20px;border-radius:14px;font-size:13px;font-weight:700;
   z-index:90;opacity:0;pointer-events:none;transition:.25s;max-width:88%;text-align:center}
 .toast.on{opacity:1;transform:translate(-50%,0)}
+@keyframes pulsa{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.07);opacity:.75}}
 .foot{text-align:center;font-size:11px;color:var(--muted);padding:34px 20px 10px;line-height:1.7}
 </style>
 
@@ -156,6 +157,7 @@ main{padding:12px 16px 0}
 </div>
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* =====================================================================
    PORTAL DE PEDIDOS — Reobote
@@ -165,7 +167,8 @@ main{padding:12px 16px 0}
    cat -> sorvete | acai | montagem | outro
    ===================================================================== */
 const WHATSAPP_FABRICA = '5535999999999';   // <-- trocar pelo número da fábrica (55 + DDD + número)
-const APP_URL          = 'index.html';       // caminho OU link completo do app de gestão
+const SB_URL = 'https://dgfoojpcgywrkhfqlfxd.supabase.co';
+const SB_KEY = 'sb_publishable_16cjr1tvjRLcyTiQTr9IbQ_ui3Q1bEA';
 
 let CATALOGO=[];   /* vem de catalogo.json — gerado pelo app em Mais → Configurações */
 
@@ -278,33 +281,58 @@ function enviar(){
 
   const itens=Object.entries(cart).map(([id,q])=>{const p=CATALOGO.find(x=>x.id===id);return {fid:id,qtd:q,preco:p.preco,nome:p.nome};});
   const total=totalV();
-  const pedido={loja,resp,tel,data,obs,itens,total,ts:Date.now()};
-
-  /* payload que o app de gestão importa com 1 toque */
-  const b64=btoa(unescape(encodeURIComponent(JSON.stringify(pedido))));
-  const base=/^https?:/.test(APP_URL)?APP_URL
-    :location.origin+location.pathname.replace(/pedidos\.html$/,'')+APP_URL;
-  const link=base+'#p='+encodeURIComponent(b64);
 
   const txt='*NOVO PEDIDO — REOBOTE*\n\n'+
     '*Loja:* '+loja+'\n'+(resp?'*Responsável:* '+resp+'\n':'')+
     '*WhatsApp:* '+tel+'\n'+
     '*Entrega:* '+data.split('-').reverse().join('/')+'\n\n'+
     itens.map(i=>'• '+i.qtd+'× '+i.nome+' — '+money(i.qtd*i.preco)).join('\n')+
-    '\n\n*Total: '+money(total)+'*'+
-    (obs?'\n\n_Obs: '+obs+'_':'')+
-    '\n\n----------\nLançar no sistema:\n'+link;
+    '\n\n*Total: '+money(total)+'*'+(obs?'\n\n_Obs: '+obs+'_':'');
 
-  sheet('Pedido confirmado',
-    '<div class="ok-box"><div class="ci">'+ic('check',32,'var(--orange-deep)',2.4)+'</div>'+
-    '<h3>Pedido registrado</h3>'+
-    '<p>Toque no botão abaixo para enviar à fábrica pelo WhatsApp. A confirmação da entrega volta por lá mesmo.</p>'+
-    '<button class="btn" id="okWpp">'+ic('phone',18)+' Enviar para a fábrica</button>'+
-    '<button class="btn ghost" id="okCopy" style="margin-top:9px">Copiar pedido</button>'+
-    '<button class="btn plum" id="okNovo" style="margin-top:9px">Fazer outro pedido</button></div>');
-  $('#okWpp').onclick=()=>window.open('https://wa.me/'+WHATSAPP_FABRICA+'?text='+encodeURIComponent(txt),'_blank');
-  $('#okCopy').onclick=()=>{navigator.clipboard.writeText(txt);toast('Pedido copiado');};
-  $('#okNovo').onclick=()=>{cart={};salvaCart();fecha();render();toast('Pronto para um novo pedido');};
+  sheet('Enviando pedido',
+    '<div class="ok-box"><div class="ci" style="animation:pulsa 1.1s ease-in-out infinite">'+
+    ic('cart',30,'var(--orange-deep)',2)+'</div>'+
+    '<h3>Enviando para a fábrica</h3><p>Só um instante...</p></div>');
+
+  enviaParaFabrica({loja,resp,tel,entrega:data,obs,itens,total}).then(ok=>{
+    if(ok){
+      sheet('Pedido enviado',
+        '<div class="ok-box"><div class="ci">'+ic('check',32,'var(--orange-deep)',2.4)+'</div>'+
+        '<h3>A fábrica já foi avisada</h3>'+
+        '<p>Seu pedido apareceu na hora no sistema da Reobote e já entrou na fila de separação. '+
+        'Qualquer novidade sobre a entrega, a gente fala no seu WhatsApp.</p>'+
+        '<button class="btn" id="okNovo">Fazer outro pedido</button>'+
+        '<button class="btn ghost" id="okWpp" style="margin-top:9px">'+ic('phone',17)+' Falar com a fábrica</button></div>');
+    } else {
+      sheet('Pedido registrado',
+        '<div class="ok-box"><div class="ci">'+ic('check',32,'var(--orange-deep)',2.4)+'</div>'+
+        '<h3>Falta só enviar</h3>'+
+        '<p>Não consegui avisar a fábrica automaticamente agora — pode ser a sua internet. '+
+        'Toque abaixo para mandar pelo WhatsApp que o pedido chega do mesmo jeito.</p>'+
+        '<button class="btn" id="okWpp">'+ic('phone',18)+' Enviar pelo WhatsApp</button>'+
+        '<button class="btn ghost" id="okCopy" style="margin-top:9px">Copiar pedido</button>'+
+        '<button class="btn plum" id="okNovo" style="margin-top:9px">Fazer outro pedido</button></div>');
+    }
+    const w=$('#okWpp'), c=$('#okCopy'), n=$('#okNovo');
+    if(w) w.onclick=()=>window.open('https://wa.me/'+WHATSAPP_FABRICA+'?text='+encodeURIComponent(txt),'_blank');
+    if(c) c.onclick=()=>{navigator.clipboard.writeText(txt);toast('Pedido copiado');};
+    if(n) n.onclick=()=>{cart={};salvaCart();fecha();render();toast('Pronto para um novo pedido');};
+    if(ok){ cart={}; salvaCart(); render(); }
+  });
+}
+
+/* grava o pedido na nuvem: é isso que faz aparecer na hora no app da equipe */
+async function enviaParaFabrica(p){
+  try{
+    if(!window.supabase) return false;
+    const sb=window.supabase.createClient(SB_URL,SB_KEY);
+    const {error}=await sb.from('reobote_pedidos').insert({
+      id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+      loja:p.loja, resp:p.resp, tel:p.tel, entrega:p.entrega||null,
+      obs:p.obs, itens:p.itens, total:p.total, status:'novo'
+    });
+    return !error;
+  }catch(e){ return false; }
 }
 
 /* ---------------- eventos ---------------- */
