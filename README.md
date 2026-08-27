@@ -22,8 +22,25 @@ Uma vez digitada, ela vale até fechar o app; o botão "trancar" fecha antes dis
 Quem está operando é escolhido no ícone de pessoa do topo (sem senha). Serve só para
 assinar quem registrou cada produção, perda e leitura de temperatura.
 
+## Como o negócio está montado no app
+
+**Unidades:** Fábrica · Loja Centro · Loja Zona Sul · Loja São Benedito · Distribuição.
+Cada aparelho escolhe em qual unidade está — tudo que for registrado nele entra ou sai dali.
+
+**Freezers:** separados entre os que ficam nas unidades e os **cedidos a clientes**,
+espalhados pela cidade e cidades vizinhas. Cada um tem código de patrimônio, onde está,
+cidade e temperatura-alvo.
+
+**Clientes:** mercados e padarias, restaurantes, sorveterias e eventos — com cidade,
+para dar conta do atendimento fora de Poços.
+
+O app vem **vazio de propósito**: nada de produto ou cliente de exemplo. O primeiro
+acesso mostra um guia com os quatro cadastros iniciais.
+
 ## O que já funciona
 
+- **Produtos com foto**: cada sabor, taça ou açaí tem foto, preço e (se você quiser) a receita. A foto é comprimida no próprio aparelho — uma foto de 11 MB da câmera vira 70 KB.
+- **Receita é opcional**: dá para cadastrar um produto só com nome, foto e preço. Sem receita, o app não baixa insumo sozinho nem calcula custo — e avisa isso em vez de fingir margem de 100%.
 - **Ficha técnica → produção**: registra a batelada e o app baixa os insumos sozinho, gera lote, validade e custo real por litro.
 - **Rendimento**: compara o produzido com o previsto e avisa quando cai (rendimento baixo = custo subindo sem ninguém ver).
 - **Estoque multi-unidade**: fábrica, loja e distribuição separadas, com transferência que só entra depois do **aceite de quem recebe** (e registro de divergência).
@@ -65,15 +82,21 @@ A mesma do New Wash: a fonte do próprio sistema (San Francisco no iPhone, Robot
 em pesos 700/800 com espaçamento fechado. Sem fonte serifada e sem carregar fonte externa —
 por isso o app abre instantâneo mesmo com sinal ruim.
 
-## Portal de pedidos — o que editar
+## Portal de pedidos — como abastecer
 
-Abra `pedidos.html` e mexa só no topo do `<script>`:
+O portal **não tem catálogo escrito à mão**. Ele lê o arquivo `catalogo.json`, que o
+próprio app gera:
 
-- `WHATSAPP_FABRICA` — número da fábrica (55 + DDD + número)
-- `CATALOGO` — os produtos, preços e unidades de venda
+1. No app: **Mais → Configurações → Gerar catálogo do portal**
+2. Baixe o `catalogo.json`
+3. Suba o arquivo na mesma pasta do site, ao lado do `pedidos.html`
 
-O `id` de cada produto do catálogo **precisa ser o mesmo id da ficha técnica** no app.
-Se não bater, o pedido entra mesmo assim, mas sem baixa de estoque.
+Entram no catálogo só os produtos com **preço de venda** — o resto é semiacabado e não
+se vende avulso. As fotos vão junto. Sem o arquivo, o portal avisa que o catálogo está
+em atualização e manda o cliente para o WhatsApp.
+
+A única coisa a editar à mão no `pedidos.html` é o `WHATSAPP_FABRICA`
+(55 + DDD + número da fábrica).
 
 ## Publicar (GitHub Pages)
 

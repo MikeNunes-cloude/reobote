@@ -52,7 +52,7 @@ main{padding:12px 16px 0}
 .prod{display:flex;gap:11px;align-items:center;background:var(--white);border:1px solid var(--line);
   border-radius:20px;padding:12px;margin-bottom:10px;transition:.16s}
 .prod.in{border-color:var(--orange);box-shadow:0 6px 18px -12px var(--orange)}
-.prod .th{width:50px;height:50px;border-radius:15px;flex:none;display:grid;place-items:center;
+.prod .th{width:50px;height:50px;border-radius:15px;flex:none;display:grid;place-items:center;overflow:hidden;
   background:var(--orange-tint);border:1px solid rgba(232,146,76,.22)}
 .prod .bd{flex:1;min-width:0;padding-right:2px}
 .prod .nm{font-size:14px;font-weight:700;letter-spacing:-.015em;line-height:1.25}
@@ -167,17 +167,15 @@ main{padding:12px 16px 0}
 const WHATSAPP_FABRICA = '5535999999999';   // <-- trocar pelo número da fábrica (55 + DDD + número)
 const APP_URL          = 'index.html';       // caminho OU link completo do app de gestão
 
-const CATALOGO=[
-  {id:'f1', nome:'Sorvete Chocolate',     cat:'sorvete',  un:'balde 10L', preco:98.00, desc:'Massa cremosa, cobertura de chocolate'},
-  {id:'f2', nome:'Sorvete Creme',         cat:'sorvete',  un:'balde 10L', preco:92.00, desc:'Base tradicional da casa'},
-  {id:'f3', nome:'Sorvete Morango',       cat:'sorvete',  un:'balde 10L', preco:96.00, desc:'Com morango de verdade'},
-  {id:'f4', nome:'Açaí batido',           cat:'acai',     un:'balde 5kg', preco:82.00, desc:'Polpa premium, textura firme'},
-  {id:'f5', nome:'Açaí 500ml montado',    cat:'montagem', un:'unidade',   preco:19.90, desc:'Copo pronto com granola e leite condensado'},
-  {id:'f6', nome:'Taça Kinder',           cat:'montagem', un:'unidade',   preco:24.90, desc:'Creme, avelã e cobertura'},
-  {id:'f7', nome:'Taça Banoffee',         cat:'montagem', un:'unidade',   preco:23.90, desc:'Banana, doce de leite e chantilly'},
-  {id:'f8', nome:'Milkshake Ovomaltine',  cat:'montagem', un:'unidade',   preco:21.90, desc:'500ml, o mais pedido'},
-];
-const CATS=[['todos','Todos'],['sorvete','Sorvetes'],['acai','Açaí'],['montagem','Prontos']];
+let CATALOGO=[];   /* vem de catalogo.json — gerado pelo app em Mais → Configurações */
+
+const NOMES_CAT={sorvete:'Sorvetes',acai:'Açaí',montagem:'Prontos',outro:'Outros'};
+let CATS=[['todos','Todos']];
+function montaCats(){
+  const vistos=[];
+  CATALOGO.forEach(p=>{ if(!vistos.includes(p.cat)) vistos.push(p.cat); });
+  CATS=[['todos','Todos']].concat(vistos.map(c=>[c,NOMES_CAT[c]||c]));
+}
 
 /* ---------------- ícones ---------------- */
 const IC={
@@ -212,13 +210,25 @@ const totalV=()=>Object.entries(cart).reduce((s,[id,q])=>{const p=CATALOGO.find(
 
 /* ---------------- render ---------------- */
 function render(){
+  montaCats();
   $('#cats').innerHTML=CATS.map(([v,l])=>'<button class="cat'+(cat===v?' on':'')+'" data-cat="'+v+'">'+l+'</button>').join('');
   const L=CATALOGO.filter(p=>cat==='todos'||p.cat===cat);
+  if(!CATALOGO.length){
+    $('#lista').innerHTML='<div style="text-align:center;padding:50px 24px;color:var(--muted)">'+
+      ic('cart',34,'var(--muted)',1.4)+
+      '<div style="font-size:14px;font-weight:700;color:var(--plum);margin-top:14px">Catálogo em atualização</div>'+
+      '<div style="font-size:12.5px;margin-top:7px;line-height:1.6">Fale com a fábrica pelo WhatsApp que a gente monta seu pedido.</div>'+
+      '<button class="btn" style="margin-top:22px" onclick="window.open(\'https://wa.me/'+WHATSAPP_FABRICA+'\',\'_blank\')">'+
+      ic('phone',17)+' Falar com a fábrica</button></div>';
+    $('#cats').innerHTML=''; $('#bar').classList.remove('on');
+    return;
+  }
   $('#lista').innerHTML=L.map(p=>{
     const q=cart[p.id]||0;
     const icone=p.cat==='acai'?'drop':p.cat==='sorvete'?'snow':'cup';
     return '<div class="prod'+(q?' in':'')+'">'+
-      '<div class="th">'+ic(icone,25,'var(--orange-deep)')+'</div>'+
+      '<div class="th">'+(p.foto?'<img src="'+p.foto+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:15px">'
+        :ic(icone,25,'var(--orange-deep)'))+'</div>'+
       '<div class="bd"><div class="nm">'+esc(p.nome)+'</div><div class="ds">'+esc(p.desc)+'</div>'+
       '<div class="pr">'+money(p.preco)+' <small>/ '+esc(p.un)+'</small></div></div>'+
       '<div class="stp">'+(q?'<button data-m="'+p.id+'">'+ic('minus',16)+'</button><span class="q mono">'+q+'</span>':'')+
@@ -312,5 +322,10 @@ document.addEventListener('click',e=>{
   if(m) return add(m.dataset.m,-1);
   if(c){ cat=c.dataset.cat; return render(); }
 });
+/* o catálogo vem do arquivo gerado pelo app; sem ele o portal avisa e manda para o WhatsApp */
+fetch('catalogo.json',{cache:'no-store'})
+  .then(r=>r.ok?r.json():[])
+  .then(d=>{ CATALOGO=Array.isArray(d)?d:(d.produtos||[]); render(); })
+  .catch(()=>render());
 render();
 </script>

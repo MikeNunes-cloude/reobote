@@ -108,6 +108,19 @@ main{padding:16px 14px 120px;position:relative;z-index:1}
 .alert .ad{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.45}
 .alert .aa{margin-left:auto;align-self:center;font-size:11px;font-weight:800;color:var(--orange-soft);white-space:nowrap}
 
+/* ================= fotos ================= */
+.thumb{width:100%;height:100%;object-fit:cover;display:block}
+.item .ic.foto{overflow:hidden;padding:0}
+.fotobox{width:100%;height:150px;border-radius:18px;background:var(--plum-850);border:1px dashed var(--line-2);
+  display:grid;place-items:center;overflow:hidden;position:relative;margin-bottom:10px}
+.fotobox img{width:100%;height:100%;object-fit:cover}
+.fotobox .ph{display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--muted-2);
+  font-size:12px;font-weight:700}
+.fotobox .rm{position:absolute;top:9px;right:9px;width:30px;height:30px;border-radius:10px;
+  background:rgba(10,2,11,.72);display:grid;place-items:center;backdrop-filter:blur(6px)}
+.fotohead{width:100%;height:180px;border-radius:20px;overflow:hidden;margin-bottom:14px;background:var(--plum-850)}
+.fotohead img{width:100%;height:100%;object-fit:cover}
+
 /* ================= itens ================= */
 .item{display:flex;align-items:center;gap:12px;padding:13px 14px;background:var(--plum-900);
   border:1px solid var(--line);border-radius:18px;margin-bottom:8px;transition:.15s;text-align:left;width:100%}
@@ -293,6 +306,7 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
   <!-- ---------------- HOME ---------------- -->
   <div class="view active" id="v-home">
     <div id="heroBox"></div>
+    <div id="homePassos" style="margin-top:6px"></div>
     <div id="homeAlerts" style="margin-top:14px"></div>
     <div class="sec">Atalhos</div>
     <div class="grid4" id="homeQuick"></div>
@@ -356,8 +370,8 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
   </div>
 
   <div class="view" id="v-fichas">
-    <div class="sec"><button data-back="mais">&larr; voltar</button><span class="sp"></span><button id="btnNovaFicha">+ ficha</button></div>
-    <div class="sec">Fichas técnicas</div><div id="fichaList"></div>
+    <div class="sec"><button data-back="mais">&larr; voltar</button><span class="sp"></span><button id="btnNovaFicha">+ produto</button></div>
+    <div class="sec">Produtos</div><div id="fichaList"></div>
   </div>
 
   <div class="view" id="v-transf">
@@ -504,6 +518,52 @@ function toast(msg,tipo){
 }
 function vibra(ms){ if(navigator.vibrate) navigator.vibrate(ms||12); }
 
+/* Comprime a foto antes de guardar: o aparelho tem espaço limitado e
+   uma foto de câmera crua ocupa o espaço de umas 100 fotos tratadas. */
+function comprimeFoto(file,max,q){
+  return new Promise((ok,err)=>{
+    const fr=new FileReader();
+    fr.onerror=()=>err(new Error('não consegui ler a imagem'));
+    fr.onload=()=>{
+      const im=new Image();
+      im.onerror=()=>err(new Error('arquivo não é uma imagem'));
+      im.onload=()=>{
+        max=max||620;
+        let {width:w,height:h}=im;
+        const esc=Math.min(1,max/Math.max(w,h));
+        w=Math.round(w*esc); h=Math.round(h*esc);
+        const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+        cv.getContext('2d').drawImage(im,0,0,w,h);
+        ok(cv.toDataURL('image/jpeg',q||0.72));
+      };
+      im.src=fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+/* campo de foto reutilizável: desenha em #box e devolve o valor em cb */
+function campoFoto(boxId,atual,cb){
+  let foto=atual||'';
+  const draw=()=>{
+    const b=$('#'+boxId); if(!b) return;
+    b.innerHTML=foto
+      ? '<img src="'+foto+'" alt=""><button class="rm" data-fotorm="1">'+ic('close',15,'var(--cream)')+'</button>'
+      : '<div class="ph">'+ic('scan',26,'var(--muted-2)',1.5)+'Toque para adicionar uma foto</div>';
+    b.onclick=e=>{
+      if(e.target.closest('[data-fotorm]')){ foto=''; cb(foto); draw(); return; }
+      const inp=document.createElement('input');
+      inp.type='file'; inp.accept='image/*';
+      inp.onchange=async()=>{
+        const f=inp.files[0]; if(!f) return;
+        try{ foto=await comprimeFoto(f); cb(foto); draw(); toast('Foto adicionada','ok'); }
+        catch(err){ toast('Não consegui usar essa imagem','bad'); }
+      };
+      inp.click();
+    };
+  };
+  draw();
+}
+
 /* ---------------------------- ESTADO ---------------------------- */
 const KEY='reobote_v1';
 let DB=null, VIEW='home';
@@ -518,63 +578,25 @@ const quem=()=>(DB&&DB.cfg.operador)||'Equipe';
 const can=()=>true;
 
 function seed(){
-  const un=[
-    {id:'u1',nome:'Fábrica',    tipo:'fabrica'},
-    {id:'u2',nome:'Loja Centro',tipo:'loja'},
-    {id:'u3',nome:'Distribuição',tipo:'dist'},
-  ];
-  const I=(id,nome,un_,est,min,custo,cat,forn)=>({id,nome,un:un_,estoque:est,min,custo,cat,forn:forn||'',hist:[]});
-  const insumos=[
-    I('i1','Polpa de açaí','kg',48,30,18.90,'base','Frutos do Norte'),
-    I('i2','Leite integral','L',60,40,4.95,'base','Laticínio Sul'),
-    I('i3','Base neutra sorvete','kg',12,8,26.50,'base','Duas Rodas'),
-    I('i4','Açúcar cristal','kg',35,20,4.20,'base',''),
-    I('i5','Leite condensado','kg',14,10,12.80,'complemento',''),
-    I('i6','Creme de leite','kg',9,8,11.40,'complemento',''),
-    I('i7','Leite em pó','kg',6,5,29.90,'complemento',''),
-    I('i8','Granola','kg',7,5,16.50,'complemento',''),
-    I('i9','Cobertura chocolate','kg',5,6,22.00,'cobertura',''),
-    I('i10','Cobertura morango','kg',4,4,19.50,'cobertura',''),
-    I('i11','Ovomaltine','kg',3,3,48.00,'complemento',''),
-    I('i12','Kinder / avelã','kg',2.5,3,72.00,'complemento',''),
-    I('i13','Paçoca','kg',3,2,24.00,'complemento',''),
-    I('i14','Banana','kg',8,5,6.90,'fruta',''),
-    I('i15','Morango','kg',5,4,18.00,'fruta',''),
-    I('i16','Copo 300ml','un',420,300,0.62,'embalagem',''),
-    I('i17','Copo 500ml','un',380,300,0.78,'embalagem',''),
-    I('i18','Taça sobremesa','un',160,150,1.35,'embalagem',''),
-    I('i19','Tampa','un',700,400,0.28,'embalagem',''),
-    I('i20','Colher','un',900,500,0.09,'embalagem',''),
-    I('i21','Pote 10L (balde)','un',22,15,9.40,'embalagem',''),
-  ];
-  const F=(id,nome,cat,rend,unid,itens,preco)=>({id,nome,cat,rend,un:unid,itens,preco,ativo:1});
-  const fichas=[
-    F('f1','Sorvete Chocolate','sorvete',10,'L',[['i2',5],['i3',1.2],['i4',1.4],['i9',.8],['i21',1]],0),
-    F('f2','Sorvete Creme','sorvete',10,'L',[['i2',5.5],['i3',1.2],['i4',1.3],['i7',.4],['i21',1]],0),
-    F('f3','Sorvete Morango','sorvete',10,'L',[['i2',5],['i3',1.2],['i4',1.3],['i15',1.5],['i21',1]],0),
-    F('f4','Açaí batido','acai',5,'kg',[['i1',4.2],['i4',.5],['i14',.6]],0),
-    F('f5','Açaí 500ml montado','montagem',1,'un',[['f4',.45],['i8',.03],['i5',.02],['i17',1],['i19',1],['i20',1]],19.90),
-    F('f6','Taça Kinder','montagem',1,'un',[['f2',.18],['i12',.035],['i9',.02],['i18',1],['i20',1]],24.90),
-    F('f7','Taça Banoffee','montagem',1,'un',[['f2',.18],['i14',.08],['i5',.03],['i18',1],['i20',1]],23.90),
-    F('f8','Milkshake Ovomaltine','montagem',1,'un',[['f2',.2],['i2',.15],['i11',.03],['i17',1],['i19',1]],21.90),
-  ];
-  const equipe=['Proprietário','Gerente','Produção'];
-  const freezers=[
-    {id:'fz1',cod:'FZ-01',local:'Fábrica — câmara',tipo:'proprio',uid:'u1',cliente:'',alvo:-18},
-    {id:'fz2',cod:'FZ-02',local:'Loja Centro — vitrine',tipo:'proprio',uid:'u2',cliente:'',alvo:-14},
-    {id:'fz3',cod:'FZ-03',local:'Loja Centro — estoque',tipo:'proprio',uid:'u2',cliente:'',alvo:-18},
-  ];
   return {
-    unidades:un, insumos, fichas, equipe, freezers,
-    producoes:[], estoque:[], transf:[], perdas:[], temps:[],
-    despesas:[], caixa:[],
-    clientes:[
-      {id:'c1',nome:'Padaria Estrela',contato:'(35) 99999-0001',end:'Av. Brasil, 210',tipo:'revenda',freezer:'',ativo:1},
-      {id:'c2',nome:'Mercado Bom Preço',contato:'(35) 99999-0002',end:'R. São Paulo, 88',tipo:'revenda',freezer:'',ativo:1},
+    unidades:[
+      {id:'u1',nome:'Fábrica',            tipo:'fabrica'},
+      {id:'u2',nome:'Loja Centro',        tipo:'loja'},
+      {id:'u3',nome:'Loja Zona Sul',      tipo:'loja'},
+      {id:'u4',nome:'Loja São Benedito',  tipo:'loja'},
+      {id:'u5',nome:'Distribuição',       tipo:'dist'},
     ],
-    pedidos:[],
-    cfg:{unidade:'u1', operador:'Proprietário', metaLitrosDia:80, alertaValidade:15, versao:'1.1'},
+    insumos:[], fichas:[], clientes:[], freezers:[],
+    producoes:[], estoque:[], transf:[], perdas:[], temps:[], pedidos:[],
+    despesas:[], caixa:[],
+    equipe:['Proprietário'],
+    cfg:{unidade:'u1', operador:'Proprietário', metaLitrosDia:0, alertaValidade:15, versao:'2.0'},
   };
+}
+
+/* Os dados de demonstração da versão anterior saem do ar sozinhos. */
+function ehDemo(d){
+  return (d.insumos||[]).some(i=>i.id==='i1') || (d.fichas||[]).some(f=>f.id==='f1');
 }
 
 function load(){
@@ -582,6 +604,8 @@ function load(){
   catch(e){ DB=seed(); }
   const base=seed();
   if(!DB.cfg) DB.cfg=base.cfg;
+  /* limpa os dados de exemplo da v1 */
+  if(ehDemo(DB)){ DB=base; }
   /* migração da v1.0 (que tinha login por PIN) */
   if(!DB.equipe) DB.equipe=(DB.users||[]).map(u=>u.nome).filter(Boolean);
   if(!DB.equipe.length) DB.equipe=base.equipe;
@@ -613,7 +637,9 @@ function custoFicha(f,prof){
 const custoUnit=f=>f?custoFicha(f)/(f.rend||1):0;
 function margem(f){
   if(!f||!f.preco) return null;
-  const c=custoUnit(f); return {custo:c,preco:f.preco,lucro:f.preco-c,pct:((f.preco-c)/f.preco)*100};
+  const c=custoUnit(f);
+  if(c<=0) return null;   /* sem receita cadastrada não dá para saber a margem */
+  return {custo:c,preco:f.preco,lucro:f.preco-c,pct:((f.preco-c)/f.preco)*100};
 }
 /* estoque de produto acabado */
 function estoqueDe(fid,unid){
@@ -694,7 +720,7 @@ RENDER.home=()=>{
   const sd=h<12?'Bom dia':h<18?'Boa tarde':'Boa noite';
   const prodHoje=DB.producoes.filter(p=>p.data===hoje());
   const litros=prodHoje.reduce((s,p)=>s+(p.real||0),0);
-  const meta=DB.cfg.metaLitrosDia||80;
+  const meta=+DB.cfg.metaLitrosDia||0;
   const vendaHoje=DB.pedidos.filter(p=>p.data.slice(0,10)===hoje()).reduce((s,p)=>s+p.total,0);
 
   $('#heroBox').innerHTML='<div class="hero">'+
@@ -703,8 +729,24 @@ RENDER.home=()=>{
     '<div class="hd">'+
       '<div><div class="hl">Produzido hoje</div><div class="hv mono">'+num(litros,1)+'<small>L</small></div></div>'+
       '<div><div class="hl">Pedidos</div><div class="hv mono">'+money(vendaHoje).replace('R$ ','R$')+'</div></div>'+
-      '<div><div class="hl">Meta dia</div><div class="hv mono">'+Math.min(100,Math.round(litros/meta*100))+'<small>%</small></div></div>'+
+      (meta>0?'<div><div class="hl">Meta dia</div><div class="hv mono">'+Math.min(100,Math.round(litros/meta*100))+'<small>%</small></div></div>':'')+
     '</div></div>';
+
+  /* app recém-instalado: guia em vez de painel vazio */
+  const passos=[
+    ['fichas', 'Cadastrar os produtos', 'Sabores, taças e açaí — com foto e preço', DB.fichas.length>0],
+    ['insumos','Cadastrar os insumos',  'Polpa, leite, embalagem e o custo de cada um', DB.insumos.length>0],
+    ['frio',   'Cadastrar os freezers', 'Das lojas e os cedidos a clientes', DB.freezers.length>0],
+    ['clientes','Cadastrar os clientes','Mercados, padarias e restaurantes que revendem', DB.clientes.length>0],
+  ];
+  const faltam=passos.filter(p=>!p[3]);
+  $('#homePassos').innerHTML=faltam.length?'<div class="sec">Para começar<span class="sp"></span>'+
+    '<span style="color:var(--muted-2);text-transform:none;letter-spacing:0">'+
+    (passos.length-faltam.length)+' de '+passos.length+'</span></div>'+
+    passos.map(([v,t,d,ok])=>'<button class="item" data-go="'+v+'"'+(ok?' style="opacity:.5"':'')+'>'+
+      '<div class="ic">'+ic(ok?'check':'plus',18,'var(--'+(ok?'ok':'orange')+')')+'</div>'+
+      '<div class="bd"><div class="t">'+t+'</div><div class="s">'+d+'</div></div>'+
+      (ok?'<span class="tag ok">feito</span>':ic('chevron',16,'var(--muted-2)'))+'</button>').join(''):'';
 
   const A=alertas();
   $('#alertDot').classList.toggle('hide',!A.length);
@@ -742,6 +784,11 @@ RENDER.home=()=>{
 };
 const kpi=(l,v,s,cls,icn)=>'<div class="kpi '+(cls||'')+'"><div class="kl">'+(icn?ic(icn,12,'var(--muted-2)'):'')+l+
   '</div><div class="kv mono">'+v+'</div><div class="ks">'+s+'</div></div>';
+/* miniatura do produto: foto se tiver, senão o ícone da categoria */
+const icoCat=f=>f.cat==='acai'?'drop':f.cat==='montagem'?'cup':f.cat==='sorvete'?'snow':'box';
+const miniFic=f=>f&&f.foto
+  ? '<div class="ic foto"><img class="thumb" src="'+f.foto+'" alt=""></div>'
+  : '<div class="ic">'+ic(icoCat(f||{}),18,'var(--orange)')+'</div>';
 const vazio=(i,t,s)=>'<div class="empty">'+ic(i,34,'var(--muted-2)',1.4)+'<div class="et">'+t+'</div><div class="es">'+s+'</div></div>';
 
 /* ---------- PRODUÇÃO ---------- */
@@ -792,7 +839,7 @@ RENDER.est=()=>{
     const fs=DB.fichas.filter(f=>f.ativo);
     $('#estBody').innerHTML=fs.map(f=>{
       const q=estoqueDe(f.id,u);
-      return '<button class="item" data-estf="'+f.id+'"><div class="ic">'+ic(f.cat==='acai'?'drop':f.cat==='montagem'?'cup':'snow',18,'var(--orange)')+'</div>'+
+      return '<button class="item" data-estf="'+f.id+'">'+miniFic(f)+
         '<div class="bd"><div class="t">'+esc(f.nome)+'</div><div class="s">'+lotesDe(f.id,u).length+' lote(s) · custo '+money(custoUnit(f))+'/'+f.un+'</div></div>'+
         '<div class="rt"><div class="rv mono" style="'+(q<=0?'color:var(--bad)':'')+'">'+num(q,1)+'</div><div class="rs">'+f.un+'</div></div></button>';
     }).join('')||vazio('box','Sem fichas cadastradas','Cadastre os sabores em Mais → Fichas técnicas.');
@@ -831,7 +878,7 @@ RENDER.mais=()=>{
   const linha=(v,i,t,s)=>can(v)?'<button class="item" data-go="'+v+'"><div class="ic">'+ic(i,18,'var(--orange)')+'</div>'+
     '<div class="bd"><div class="t">'+t+'</div><div class="s">'+s+'</div></div>'+ic('chevron',16,'var(--muted-2)')+'</button>':'';
   $('#maisCad').innerHTML=[linha('insumos','cup','Insumos','Matéria-prima, embalagem e custo'),
-    linha('fichas','recipe','Fichas técnicas','Receita e rendimento de cada item'),
+    linha('fichas','recipe','Produtos','Sabores, taças e açaí — foto, preço e receita'),
     linha('clientes','store','Clientes','Revendas e pontos de venda')].join('');
   $('#maisOp').innerHTML=[linha('transf','truck','Transferências','Fábrica → loja com aceite'),
     linha('perdas','trash','Perdas e quebras','Derretimento, validade, avaria'),
@@ -863,12 +910,14 @@ RENDER.insumos=()=>{
 RENDER.fichas=()=>{
   $('#fichaList').innerHTML=DB.fichas.map(f=>{
     const m=margem(f);
-    return '<button class="item" data-fic="'+f.id+'"><div class="ic">'+ic(f.cat==='acai'?'drop':f.cat==='montagem'?'cup':'snow',18,'var(--orange)')+'</div>'+
+    return '<button class="item" data-fic="'+f.id+'">'+miniFic(f)+
       '<div class="bd"><div class="t">'+esc(f.nome)+'</div>'+
-      '<div class="s">'+f.itens.length+' ingredientes · rende '+num(f.rend,1)+f.un+'</div></div>'+
-      '<div class="rt"><div class="rv mono">'+money(custoUnit(f))+'</div>'+
-      '<div class="rs">'+(m?'<span class="tag '+(m.pct<45?'bad':m.pct<60?'warn':'ok')+'">'+num(m.pct,0)+'% marg</span>':'custo/'+f.un)+'</div></div></button>';
-  }).join('')||vazio('recipe','Nenhuma ficha','A ficha técnica é o coração: sem ela o estoque não baixa sozinho.');
+      '<div class="s">'+(f.itens.length?f.itens.length+' ingredientes · rende '+num(f.rend,1)+f.un
+        :'<span style="color:var(--warn)">sem receita</span>')+'</div></div>'+
+      '<div class="rt"><div class="rv mono">'+money(custoUnit(f)||f.preco)+'</div>'+
+      '<div class="rs">'+(m?'<span class="tag '+(m.pct<45?'bad':m.pct<60?'warn':'ok')+'">'+num(m.pct,0)+'% marg</span>'
+        :custoUnit(f)>0?'custo/'+f.un:'<span class="tag">preço de venda</span>')+'</div></div></button>';
+  }).join('')||vazio('recipe','Nenhum produto ainda','Cadastre cada sabor, taça e açaí com foto e preço. A receita é opcional — mas é ela que faz o estoque baixar sozinho.');
 };
 
 /* ---------- TRANSFERÊNCIAS ---------- */
@@ -912,16 +961,25 @@ RENDER.frio=()=>{
   $('#frioKpis').innerHTML=[
     kpi('Sem leitura hoje',semLeitura,semLeitura?'medir agora':'todos medidos',semLeitura?'warn':'good','thermo'),
     kpi('Fora da faixa',fora,fora?'risco de perda':'tudo na temperatura',fora?'bad':'good','alert'),
+    kpi('Cedidos a clientes',naRua,'espalhados pela região','brand','store'),
+    kpi('Total de freezers',DB.freezers.length,'sob controle','','thermo'),
   ].join('');
-  $('#frioList').innerHTML=DB.freezers.map(f=>{
+  const naRua=DB.freezers.filter(f=>f.tipo==='comodato').length;
+  const linhaFz=f=>{
     const u=DB.temps.filter(t=>t.fzid===f.id).sort((a,b)=>b.data.localeCompare(a.data))[0];
     const cls=!u?'':u.temp>f.alvo+3?'bad':u.temp>f.alvo+1?'warn':'ok';
     return '<button class="item" data-fz="'+f.id+'"><div class="ic">'+ic('thermo',18,'var(--'+(cls==='ok'?'ok':cls||'muted')+')')+'</div>'+
-      '<div class="bd"><div class="t">'+esc(f.cod)+(f.tipo==='comodato'?' <span class="tag info">comodato</span>':'')+'</div>'+
-      '<div class="s">'+esc(f.local)+' · alvo '+f.alvo+'°C</div></div>'+
+      '<div class="bd"><div class="t">'+esc(f.cod)+'</div>'+
+      '<div class="s">'+esc(f.local||'sem local')+(f.cidade?' · '+esc(f.cidade):'')+' · alvo '+f.alvo+'°C</div></div>'+
       '<div class="rt"><div class="rv mono" style="'+(cls&&cls!=='ok'?'color:var(--'+cls+')':'')+'">'+(u?num(u.temp,1)+'°':'—')+'</div>'+
       '<div class="rs">'+(u?fmtDH(u.data).slice(6):'sem leitura')+'</div></div></button>';
-  }).join('')||vazio('thermo','Nenhum freezer','Cadastre os equipamentos para começar o controle de temperatura.');
+  };
+  const nossos=DB.freezers.filter(f=>f.tipo!=='comodato');
+  const cedidos=DB.freezers.filter(f=>f.tipo==='comodato');
+  $('#frioList').innerHTML=DB.freezers.length
+    ? (nossos.length?'<div class="sec" style="margin-top:2px">Nas nossas unidades</div>'+nossos.map(linhaFz).join(''):'')+
+      (cedidos.length?'<div class="sec">Cedidos a clientes ('+cedidos.length+')</div>'+cedidos.map(linhaFz).join(''):'')
+    : vazio('thermo','Nenhum freezer','Cadastre os das lojas e também os cedidos a padarias, mercados e restaurantes.');
 };
 
 /* ---------- CLIENTES ---------- */
@@ -933,7 +991,7 @@ RENDER.clientes=()=>{
     const parado=ult?dias(ult.data.slice(0,10),hoje()):null;
     return '<button class="item" data-cli="'+c.id+'"><div class="ic">'+ic('store',18,'var(--orange)')+'</div>'+
       '<div class="bd"><div class="t">'+esc(c.nome)+(c.freezer?' <span class="tag info">freezer</span>':'')+'</div>'+
-      '<div class="s">'+esc(c.end||c.contato||'—')+'</div></div>'+
+      '<div class="s">'+esc([c.end,c.cidade].filter(Boolean).join(' · ')||c.contato||'—')+'</div></div>'+
       '<div class="rt"><div class="rv mono">'+money(tot)+'</div>'+
       '<div class="rs">'+(parado===null?'sem pedido':parado>30?'<span class="tag bad">'+parado+'d parado</span>':'há '+parado+'d')+'</div></div></button>';
   }).join('')||vazio('store','Nenhum cliente','Cadastre as revendas para liberar o portal de pedidos.');
@@ -941,7 +999,7 @@ RENDER.clientes=()=>{
 
 /* ---------- CUSTOS ---------- */
 RENDER.custos=()=>{
-  const comPreco=DB.fichas.filter(f=>f.preco>0);
+  const comPreco=DB.fichas.filter(f=>f.preco>0&&margem(f));
   const mm=comPreco.length?comPreco.reduce((s,f)=>s+margem(f).pct,0)/comPreco.length:0;
   const pior=comPreco.map(f=>({f,m:margem(f)})).sort((a,b)=>a.m.pct-b.m.pct)[0];
   $('#custoKpis').innerHTML=[
@@ -955,7 +1013,7 @@ RENDER.custos=()=>{
       '<div class="s">custo '+money(custoUnit(f))+' · venda '+money(f.preco)+'</div>'+
       '<div class="bar"><i class="'+(m.pct<45?'bad':m.pct<60?'warn':'')+'" style="width:'+Math.max(0,Math.min(100,m.pct))+'%"></i></div></div>'+
       '<div class="rt"><div class="rv mono">'+num(m.pct,0)+'%</div><div class="rs">'+money(m.lucro)+'</div></div></button>';
-  }).join('')||vazio('money','Sem preço de venda','Defina o preço nas fichas para o app calcular a margem.');
+  }).join('')||vazio('money','Nada para comparar ainda','A margem aparece quando o produto tem preço de venda E receita cadastrada — sem receita, o app não sabe quanto custa produzir.');
 };
 
 /* ---------- EQUIPE ---------- */
@@ -984,6 +1042,11 @@ RENDER.config=()=>{
     DB.unidades.map(u=>'<div class="item"><div class="ic">'+ic(u.tipo==='fabrica'?'factory':u.tipo==='loja'?'store':'truck',18,'var(--muted)')+
       '</div><div class="bd"><div class="t">'+esc(u.nome)+'</div><div class="s">'+u.tipo+'</div></div></div>').join('')+
     '<button class="btn ghost sm" id="btnNovaUnid" style="width:100%;margin-top:6px">'+ic('plus',15)+' Nova unidade</button>'+
+    '<div class="sec">Portal de pedidos</div>'+
+    '<div class="card" style="margin-bottom:10px;font-size:12.5px;color:var(--muted);line-height:1.55">'+
+      'O portal do cliente mostra os produtos que tiverem <b style="color:var(--cream-2)">preço de venda</b> cadastrado. '+
+      'Depois de mexer nos produtos, gere o catálogo e suba o arquivo junto com o site.</div>'+
+    '<button class="btn ghost" id="btnCatalogo">'+ic('down',17)+' Gerar catálogo do portal</button>'+
     '<div class="sec">Dados</div>'+
     '<button class="btn ghost" id="btnExport">'+ic('down',17)+' Exportar backup (JSON)</button>'+
     '<div class="btnrow"><button class="btn ghost" id="btnImport">Importar backup</button>'+
@@ -1189,19 +1252,21 @@ function listaCompra(){
    ===================================================================== */
 let fEdit=null;
 function editarFicha(id){
-  fEdit=id?JSON.parse(JSON.stringify(gFic(id))):{id:'',nome:'',cat:'sorvete',rend:10,un:'L',itens:[],preco:0,ativo:1};
+  fEdit=id?JSON.parse(JSON.stringify(gFic(id))):{id:'',nome:'',cat:'sorvete',rend:1,un:'un',itens:[],preco:0,foto:'',ativo:1};
   const cats=[['sorvete','Sorvete'],['acai','Açaí'],['montagem','Montagem/Taça'],['outro','Outro']];
-  sheet(id?'Editar ficha':'Nova ficha técnica','Receita, rendimento e custo',
+  sheet(id?'Editar produto':'Novo produto','Foto, preço e (se quiser) a receita',
+    '<div class="fotobox" id="fFoto"></div>'+
     '<div class="f"><label>Nome</label><input id="fN" value="'+esc(fEdit.nome)+'" placeholder="Ex.: Taça Kinder"></div>'+
     '<div class="f3"><div class="f"><label>Tipo</label><select id="fC">'+
       cats.map(([v,l])=>'<option value="'+v+'"'+(fEdit.cat===v?' selected':'')+'>'+l+'</option>').join('')+'</select></div>'+
     '<div class="f"><label>Rende</label><input id="fR" type="number" inputmode="decimal" value="'+fEdit.rend+'"></div>'+
     '<div class="f"><label>Unidade</label><select id="fU">'+['L','kg','un'].map(u=>'<option'+(fEdit.un===u?' selected':'')+'>'+u+'</option>').join('')+'</select></div></div>'+
     '<div class="f"><label>Preço de venda (opcional)</label><input id="fP" type="number" inputmode="decimal" value="'+(fEdit.preco||'')+'" placeholder="deixe vazio se for semiacabado"></div>'+
-    '<div class="sec" style="margin-left:0">Ingredientes<span class="sp"></span><button id="fAdd">+ adicionar</button></div>'+
+    '<div class="sec" style="margin-left:0">Receita<span class="sp"></span><button id="fAdd">+ ingrediente</button></div>'+
     '<div id="fItens"></div><div id="fResumo"></div>'+
-    '<button class="btn" id="fSalvar" style="margin-top:14px">'+ic('check',18)+' Salvar ficha</button>'+
-    (id?'<button class="btn danger" id="fExcluir" style="margin-top:9px">Excluir ficha</button>':''));
+    '<button class="btn" id="fSalvar" style="margin-top:14px">'+ic('check',18)+' Salvar produto</button>'+
+    (id?'<button class="btn danger" id="fExcluir" style="margin-top:9px">Excluir produto</button>':''));
+  campoFoto('fFoto',fEdit.foto,v=>{fEdit.foto=v;});
   const opts=()=>DB.insumos.map(i=>'<option value="'+i.id+'">'+esc(i.nome)+' ('+i.un+')</option>').join('')+
     DB.fichas.filter(f=>f.id!==fEdit.id&&f.cat!=='montagem').map(f=>'<option value="'+f.id+'">'+esc(f.nome)+' — semi ('+f.un+')</option>').join('');
   const drawItens=()=>{
@@ -1215,7 +1280,9 @@ function editarFicha(id){
         '<input data-fq="'+ix+'" type="number" inputmode="decimal" value="'+q+'" style="width:74px;text-align:right;padding:9px;border-radius:11px;background:var(--plum-850);border:1px solid var(--line);color:var(--cream);font-size:13px">'+
         '<div style="font-size:11px;color:var(--muted-2);width:20px">'+un+'</div>'+
         '<button data-fx="'+ix+'" style="width:30px;height:30px;display:grid;place-items:center">'+ic('close',15,'var(--bad)')+'</button></div>';
-    }).join(''):'<div style="font-size:12px;color:var(--muted-2);padding:12px 4px">Nenhum ingrediente. Toque em "adicionar".</div>';
+    }).join(''):'<div style="font-size:12px;color:var(--muted-2);padding:10px 4px;line-height:1.5">'+
+      'Sem receita cadastrada. Dá para salvar assim mesmo — mas aí o app não baixa insumo '+
+      'sozinho nem calcula o custo deste produto.</div>';
     const rend=nval('fR')||1, custo=custoFicha(fEdit), cu=custo/rend, preco=nval('fP');
     $('#fResumo').innerHTML='<div class="card" style="margin-top:12px;padding:14px">'+
       '<div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;margin-bottom:7px">'+
@@ -1234,22 +1301,26 @@ function editarFicha(id){
   drawItens();
   $('#fSalvar').onclick=()=>{
     const nome=val('fN'); if(!nome){ toast('Informe o nome','bad'); return; }
-    if(!fEdit.itens.length){ toast('Adicione ao menos um ingrediente','bad'); return; }
     const o={id:fEdit.id||('f'+uid()),nome,cat:val('fC'),rend:nval('fR')||1,un:val('fU'),
-      itens:fEdit.itens.filter(([,q])=>q>0),preco:nval('fP'),ativo:1};
+      itens:fEdit.itens.filter(([,q])=>q>0),preco:nval('fP'),foto:fEdit.foto||'',ativo:1};
     if(id) Object.assign(gFic(id),o); else DB.fichas.push(o);
-    save(); fecha(); toast('Ficha salva','ok'); RENDER[VIEW]&&RENDER[VIEW]();
+    save(); fecha(); toast('Produto salvo','ok'); RENDER[VIEW]&&RENDER[VIEW]();
   };
   if(id) $('#fExcluir').onclick=()=>{ if(!confirm('Excluir ficha?'))return;
     DB.fichas=DB.fichas.filter(x=>x.id!==id); save(); fecha(); toast('Excluída'); RENDER[VIEW]&&RENDER[VIEW](); };
 }
 function abrirFicha(id){
   const f=gFic(id); if(!f)return; const m=margem(f);
-  sheet(f.nome,'Rende '+num(f.rend,1)+f.un+' · custo '+money(custoUnit(f))+'/'+f.un,
+  sheet(f.nome,custoUnit(f)>0?'Rende '+num(f.rend,1)+f.un+' · custo '+money(custoUnit(f))+'/'+f.un
+    :(f.preco?money(f.preco)+' de venda':'sem preço cadastrado'),
+    (f.foto?'<div class="fotohead"><img src="'+f.foto+'" alt=""></div>':'')+
     (m?'<div class="grid2" style="margin-bottom:14px">'+
       kpi('Margem',num(m.pct,0)+'%',money(m.lucro)+' por '+f.un,m.pct<45?'bad':m.pct<60?'warn':'good')+
       kpi('Preço sugerido',money(custoUnit(f)/0.35),'para 65% de margem','brand')+'</div>':'')+
-    '<div class="sec" style="margin-top:0">Composição</div>'+
+    (f.itens.length?'<div class="sec" style="margin-top:0">Composição</div>':
+      '<div class="alert warn" style="margin-top:4px">'+ic('alert',17,'var(--warn)')+
+      '<div style="flex:1"><div class="at">Produto sem receita</div><div class="ad">'+
+      'Cadastre os ingredientes para o app baixar o estoque sozinho e calcular o custo real.</div></div></div>')+
     f.itens.map(([rid,q])=>{const r=rid[0]==='i'?gIns(rid):gFic(rid);
       const c=rid[0]==='i'?(r?r.custo*q:0):(r?custoUnit(r)*q:0);
       return '<div class="item" style="margin-bottom:6px"><div class="bd"><div class="t" style="font-size:13px">'+esc(r?r.nome:'—')+'</div>'+
@@ -1333,23 +1404,31 @@ function abrirFreezer(id){
   $('#fzEdit').onclick=()=>editarFreezer(id);
 }
 function editarFreezer(id){
-  const f=id?gFz(id):{id:'',cod:'FZ-'+String(DB.freezers.length+1).padStart(2,'0'),local:'',tipo:'proprio',uid:DB.cfg.unidade,cliente:'',alvo:-18};
+  const f=id?gFz(id):{id:'',cod:'FZ-'+String(DB.freezers.length+1).padStart(2,'0'),local:'',tipo:'proprio',
+    uid:DB.cfg.unidade,cliente:'',cidade:'Poços de Caldas',alvo:-18};
   sheet(id?'Editar freezer':'Novo freezer','',
-    '<div class="f2"><div class="f"><label>Código</label><input id="zC" value="'+esc(f.cod)+'"></div>'+
+    '<div class="f2"><div class="f"><label>Código / patrimônio</label><input id="zC" value="'+esc(f.cod)+'"></div>'+
     '<div class="f"><label>Alvo (°C)</label><input id="zA" type="number" value="'+f.alvo+'"></div></div>'+
-    '<div class="f"><label>Local</label><input id="zL" value="'+esc(f.local)+'" placeholder="Ex.: Loja Centro — vitrine"></div>'+
+    '<div class="f"><label>Onde está</label><input id="zL" value="'+esc(f.local)+'" placeholder="Ex.: Padaria Estrela — entrada"></div>'+
+    '<div class="f"><label>Cidade</label><input id="zCid" value="'+esc(f.cidade||'')+'" placeholder="Poços de Caldas"></div>'+
     '<div class="f"><label>Tipo</label><div class="chips" id="zT">'+
-      [['proprio','Próprio'],['comodato','Comodato (no cliente)']].map(([v,l])=>
+      [['proprio','Em unidade nossa'],['comodato','Cedido a cliente']].map(([v,l])=>
       '<button class="chip'+(f.tipo===v?' on':'')+'" data-tp="'+v+'">'+l+'</button>').join('')+'</div></div>'+
-    '<div class="f'+(f.tipo==='comodato'?'':' hide')+'" id="zCliW"><label>Cliente</label><select id="zCli">'+
-      DB.clientes.map(c=>'<option value="'+c.id+'"'+(f.cliente===c.id?' selected':'')+'>'+esc(c.nome)+'</option>').join('')+'</select></div>'+
+    '<div class="f'+(f.tipo==='comodato'?' hide':'')+'" id="zUnW"><label>Unidade</label><select id="zUn">'+
+      DB.unidades.map(u=>'<option value="'+u.id+'"'+(f.uid===u.id?' selected':'')+'>'+esc(u.nome)+'</option>').join('')+'</select></div>'+
+    '<div class="f'+(f.tipo==='comodato'?'':' hide')+'" id="zCliW"><label>Cliente</label>'+
+      (DB.clientes.length?'<select id="zCli">'+
+      DB.clientes.map(c=>'<option value="'+c.id+'"'+(f.cliente===c.id?' selected':'')+'>'+esc(c.nome)+'</option>').join('')+'</select>'
+      :'<div class="hint" style="margin:0">Cadastre o cliente primeiro em Mais → Clientes.</div>')+'</div>'+
     '<button class="btn" id="zSalvar">'+ic('check',18)+' Salvar</button>'+
     (id?'<button class="btn danger" id="zDel" style="margin-top:9px">Excluir</button>':''));
   let tipo=f.tipo;
   $$('#zT .chip').forEach(c=>c.onclick=()=>{$$('#zT .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');
-    tipo=c.dataset.tp; $('#zCliW').classList.toggle('hide',tipo!=='comodato');});
+    tipo=c.dataset.tp; $('#zCliW').classList.toggle('hide',tipo!=='comodato');
+    $('#zUnW').classList.toggle('hide',tipo==='comodato');});
   $('#zSalvar').onclick=()=>{
-    const o={id:f.id||('fz'+uid()),cod:val('zC'),local:val('zL'),tipo,uid:DB.cfg.unidade,
+    const o={id:f.id||('fz'+uid()),cod:val('zC'),local:val('zL'),tipo,cidade:val('zCid'),
+      uid:tipo==='comodato'?'':val('zUn'),
       cliente:tipo==='comodato'?val('zCli'):'',alvo:nval('zA')||-18};
     if(id) Object.assign(gFz(id),o); else DB.freezers.push(o);
     save(); fecha(); toast('Freezer salvo','ok'); RENDER[VIEW]&&RENDER[VIEW]();
@@ -1444,20 +1523,21 @@ function divergencia(t){
    CLIENTES + PEDIDOS
    ===================================================================== */
 function editarCliente(id){
-  const c=id?gCli(id):{id:'',nome:'',contato:'',end:'',tipo:'revenda',ativo:1};
-  sheet(id?'Editar cliente':'Novo cliente','',
-    '<div class="f"><label>Nome</label><input id="cN" value="'+esc(c.nome)+'" autofocus></div>'+
+  const c=id?gCli(id):{id:'',nome:'',contato:'',end:'',cidade:'Poços de Caldas',tipo:'mercado',ativo:1};
+  sheet(id?'Editar cliente':'Novo cliente','Quem compra para revender',
+    '<div class="f"><label>Nome</label><input id="cN" value="'+esc(c.nome)+'" placeholder="Ex.: Padaria Estrela" autofocus></div>'+
     '<div class="f"><label>WhatsApp / telefone</label><input id="cT" value="'+esc(c.contato)+'" inputmode="tel"></div>'+
-    '<div class="f"><label>Endereço</label><input id="cE" value="'+esc(c.end)+'"></div>'+
+    '<div class="f2"><div class="f"><label>Endereço</label><input id="cE" value="'+esc(c.end)+'"></div>'+
+    '<div class="f"><label>Cidade</label><input id="cCid" value="'+esc(c.cidade||'')+'"></div></div>'+
     '<div class="f"><label>Tipo</label><div class="chips" id="cTp">'+
-      [['revenda','Revenda'],['evento','Evento'],['atacado','Atacado']].map(([v,l])=>
+      [['mercado','Mercado / padaria'],['restaurante','Restaurante'],['loja','Sorveteria'],['evento','Evento']].map(([v,l])=>
       '<button class="chip'+(c.tipo===v?' on':'')+'" data-ct="'+v+'">'+l+'</button>').join('')+'</div></div>'+
     '<button class="btn" id="cSalvar">'+ic('check',18)+' Salvar</button>');
   let tipo=c.tipo;
   $$('#cTp .chip').forEach(x=>x.onclick=()=>{$$('#cTp .chip').forEach(y=>y.classList.remove('on'));x.classList.add('on');tipo=x.dataset.ct;});
   $('#cSalvar').onclick=()=>{
     const nome=val('cN'); if(!nome){ toast('Informe o nome','bad'); return; }
-    const o={id:c.id||('c'+uid()),nome,contato:val('cT'),end:val('cE'),tipo,ativo:1};
+    const o={id:c.id||('c'+uid()),nome,contato:val('cT'),end:val('cE'),cidade:val('cCid'),tipo,ativo:1};
     if(id) Object.assign(gCli(id),o); else DB.clientes.push(o);
     save(); fecha(); toast('Cliente salvo','ok'); RENDER[VIEW]&&RENDER[VIEW]();
   };
@@ -2022,4 +2102,53 @@ document.addEventListener('click',e=>{
     save(); atualizaHeader(); return RENDER.equipe();
   }
 });
+</script>
+
+<script>
+/* =====================================================================
+   CATÁLOGO DO PORTAL
+   Gera o catalogo.json que o portal do cliente lê. Só entram produtos
+   com preço de venda — o resto é semiacabado e não se vende avulso.
+   ===================================================================== */
+function gerarCatalogo(){
+  const prods=DB.fichas.filter(f=>f.ativo&&f.preco>0).map(f=>({
+    id:f.id, nome:f.nome, cat:f.cat, un:f.un==='un'?'unidade':f.un,
+    preco:f.preco, desc:f.desc||'', foto:f.foto||''
+  }));
+  if(!prods.length){
+    sheet('Catálogo do portal','Nenhum produto com preço',
+      vazio('cart','Nada para publicar ainda',
+        'Cadastre os produtos e defina o preço de venda de cada um. Só entram no portal os que têm preço.')+
+      '<button class="btn" id="cgIr">'+ic('plus',18)+' Cadastrar produto</button>');
+    $('#cgIr').onclick=()=>{ fecha(); go('fichas'); editarFicha(); };
+    return;
+  }
+  const json=JSON.stringify(prods,null,2);
+  const kb=Math.round(new Blob([json]).size/1024);
+  const comFoto=prods.filter(p=>p.foto).length;
+  sheet('Catálogo do portal',prods.length+' produtos · '+kb+' KB',
+    '<div class="card" style="margin-bottom:12px">'+
+      prods.map(p=>'<div style="display:flex;align-items:center;gap:10px;padding:7px 0">'+
+        (p.foto?'<img src="'+p.foto+'" style="width:32px;height:32px;border-radius:9px;object-fit:cover">'
+              :'<div style="width:32px;height:32px;border-radius:9px;background:var(--plum-850);display:grid;place-items:center">'+
+               ic('cup',15,'var(--muted-2)')+'</div>')+
+        '<div style="flex:1;font-size:13px;font-weight:700">'+esc(p.nome)+'</div>'+
+        '<div class="mono" style="font-size:12.5px;font-weight:800;color:var(--orange-soft)">'+money(p.preco)+'</div></div>').join('')+
+    '</div>'+
+    (comFoto<prods.length?'<div class="alert warn" style="margin-bottom:12px">'+ic('alert',17,'var(--warn)')+
+      '<div style="flex:1"><div class="at">'+(prods.length-comFoto)+' sem foto</div>'+
+      '<div class="ad">Produto com foto vende mais no portal. Dá para adicionar depois e gerar de novo.</div></div></div>':'')+
+    '<button class="btn" id="cgBaixar">'+ic('down',18)+' Baixar catalogo.json</button>'+
+    '<button class="btn ghost" id="cgCopiar" style="margin-top:9px">Copiar conteúdo</button>'+
+    '<div class="hint" style="margin-top:12px">Suba o arquivo <b>catalogo.json</b> na mesma pasta do site, '+
+    'ao lado do pedidos.html. O portal passa a mostrar esses produtos na hora.</div>');
+  $('#cgBaixar').onclick=()=>{
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));
+    a.download='catalogo.json'; a.click();
+    toast('catalogo.json gerado','ok');
+  };
+  $('#cgCopiar').onclick=()=>{ navigator.clipboard.writeText(json); toast('Copiado','ok'); };
+}
+document.addEventListener('click',e=>{ if(e.target.closest('#btnCatalogo')) gerarCatalogo(); });
 </script>
