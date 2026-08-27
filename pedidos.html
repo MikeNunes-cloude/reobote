@@ -167,8 +167,11 @@ main{padding:12px 16px 0}
    cat -> sorvete | acai | montagem | outro
    ===================================================================== */
 const WHATSAPP_FABRICA = '5535999999999';   // <-- trocar pelo número da fábrica (55 + DDD + número)
-const SB_URL = 'https://dgfoojpcgywrkhfqlfxd.supabase.co';
-const SB_KEY = 'sb_publishable_16cjr1tvjRLcyTiQTr9IbQ_ui3Q1bEA';
+/* Projeto Supabase da Reobote — os mesmos dois valores usados no index.html.
+   A chave aparece no código desta página, por isso o projeto tem de ser
+   exclusivo da Reobote. */
+const SB_URL = '';
+const SB_KEY = '';
 
 let CATALOGO=[];   /* vem de catalogo.json — gerado pelo app em Mais → Configurações */
 
@@ -324,6 +327,7 @@ function enviar(){
 /* grava o pedido na nuvem: é isso que faz aparecer na hora no app da equipe */
 async function enviaParaFabrica(p){
   try{
+    if(!SB_URL||!SB_KEY) return false;
     if(!window.supabase) return false;
     const sb=window.supabase.createClient(SB_URL,SB_KEY);
     const {error}=await sb.from('reobote_pedidos').insert({

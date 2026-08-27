@@ -1031,6 +1031,8 @@ RENDER.config=()=>{
         '<div class="ad">'+(ok?'Pedido feito no portal aparece aqui na hora.'
           :nuvem.erro==='tabela ainda não criada no Supabase'
             ?'Falta rodar o arquivo supabase-pedidos.sql no painel do Supabase — depois disso funciona sozinho.'
+          :nuvem.erro==='projeto Supabase da Reobote ainda não criado'
+            ?'Crie um projeto no Supabase só para a Reobote e me passe a URL e a chave. Enquanto isso, o pedido do portal chega pelo WhatsApp.'
             :esc(nuvem.erro||'aguarde alguns segundos'))+'</div></div></div>'+
       (perm==='granted'
         ?'<div class="alert ok" style="margin-bottom:10px">'+ic('bell',18,'var(--ok)')+
@@ -2128,11 +2130,16 @@ document.addEventListener('click',e=>{ if(e.target.closest('#btnCatalogo')) gera
    na hora — sem passar pelo WhatsApp, sem ninguém digitar de novo.
    Se a nuvem estiver fora, o app segue funcionando local.
    ===================================================================== */
-const SB_URL='https://dgfoojpcgywrkhfqlfxd.supabase.co';
-const SB_KEY='sb_publishable_16cjr1tvjRLcyTiQTr9IbQ_ui3Q1bEA';
+/* Projeto Supabase da Reobote — preencher com os dados do painel:
+   Settings → API → Project URL e a chave publishable/anon.
+   Precisa ser um projeto SÓ da Reobote: a chave fica visível no código,
+   então quem abre esta página alcança tudo que o projeto expõe. */
+const SB_URL='';
+const SB_KEY='';
 let sb=null, nuvem={ligado:false,erro:'',ultima:0};
 
 function iniciaNuvem(){
+  if(!SB_URL||!SB_KEY){ nuvem.erro='projeto Supabase da Reobote ainda não criado'; return; }
   try{
     if(!window.supabase) throw new Error('sem conexão para carregar a nuvem');
     sb=window.supabase.createClient(SB_URL,SB_KEY);

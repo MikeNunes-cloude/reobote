@@ -26,11 +26,17 @@ registro feito nele entra ou sai daquela unidade.
 ## Pedidos em tempo real — PASSO OBRIGATÓRIO
 
 O pedido feito no portal aparece no app **na hora**, com som e notificação. Para isso
-funcionar é preciso criar a tabela uma única vez:
+funcionar, a Reobote precisa do **projeto próprio** no Supabase:
 
-1. Abra o painel do Supabase → **SQL Editor**
-2. Cole o conteúdo de **`supabase-pedidos.sql`** (está nesta pasta)
-3. **Run**
+1. No Supabase, **New project** → nome `reobote` (região São Paulo)
+2. **SQL Editor** → cole o conteúdo de **`supabase-pedidos.sql`** → **Run**
+3. **Settings → API** → copie a *Project URL* e a chave *publishable / anon*
+4. Cole os dois valores em `SB_URL` e `SB_KEY`, no topo do `<script>` do
+   **`index.html`** e do **`pedidos.html`** (os mesmos dois valores nos dois arquivos)
+
+**Não reaproveite o projeto de outro cliente.** Essa chave fica visível no código-fonte
+de quem abrir a página, então quem tem o link do portal alcança tudo que o projeto
+expõe. Um projeto por negócio.
 
 Enquanto isso não for feito, o app avisa em Configurações e o portal manda o pedido
 pelo WhatsApp como reserva — o cliente nunca fica sem conseguir pedir.
