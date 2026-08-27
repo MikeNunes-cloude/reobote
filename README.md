@@ -50,6 +50,21 @@ assinar quem registrou cada produção, perda e leitura de temperatura.
 A compra de insumo **não** entra como despesa: ela vira estoque e só pesa no resultado
 quando é consumida na produção. Lançar as duas coisas contaria o mesmo gasto duas vezes.
 
+## Logo oficial
+
+O app procura por **`assets/logo.png`**. Se o arquivo existir, ele usa a imagem no topo,
+na tela do Financeiro e no portal do cliente. Enquanto não existir, desenha um símbolo
+aproximado no lugar.
+
+Para usar o logo de verdade: salve o arquivo como `assets/logo.png` e suba.
+Fundo roxo (como o original) fica certo nas duas telas — o topo do app e do portal são roxos.
+
+## Tipografia
+
+A mesma do New Wash: a fonte do próprio sistema (San Francisco no iPhone, Roboto no Android),
+em pesos 700/800 com espaçamento fechado. Sem fonte serifada e sem carregar fonte externa —
+por isso o app abre instantâneo mesmo com sinal ruim.
+
 ## Portal de pedidos — o que editar
 
 Abra `pedidos.html` e mexa só no topo do `<script>`:

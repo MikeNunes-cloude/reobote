@@ -5,9 +5,6 @@
 <meta property="og:description" content="Faça seu pedido de reposição direto com a fábrica." />
 <link rel="apple-touch-icon" href="assets/icon-192.png" />
 <link rel="icon" href="assets/icon-192.png" />
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
 <title>Pedidos Reobote</title>
 
 <style>
@@ -17,7 +14,6 @@
   --orange:#E8924C; --orange-deep:#C4712F; --orange-tint:#FBEDDF;
   --line:#E8DCD2; --muted:#8A7480; --ok:#3FA372; --bad:#D2445F;
   --safe-bottom:env(safe-area-inset-bottom,0px); --safe-top:env(safe-area-inset-top,0px);
-  --serif:"Playfair Display",Georgia,serif;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -35,11 +31,11 @@ h1,h2,h3{margin:0;letter-spacing:-.02em}
   border-radius:0 0 28px 28px;position:relative;overflow:hidden}
 .top::after{content:"";position:absolute;right:-48px;top:-48px;width:180px;height:180px;border-radius:50%;
   background:radial-gradient(circle,rgba(232,146,76,.28),transparent 66%)}
-.wm{font-family:var(--serif);font-size:29px;font-weight:600;display:flex;align-items:baseline;position:relative;z-index:1}
-.wm .om{display:inline-grid;place-items:center;width:26px;height:26px;transform:translateY(2px);margin:0 1px}
+.wm{font-size:26px;font-weight:800;display:flex;align-items:center;position:relative;z-index:1;letter-spacing:-.03em}
+.wm .om{display:inline-grid;place-items:center;width:24px;height:24px;margin:0 1px}
 .tagline{font-size:8.5px;font-weight:800;letter-spacing:.32em;text-transform:uppercase;color:rgba(247,239,232,.5);
   margin-top:5px;position:relative;z-index:1}
-.top h1{font-family:var(--serif);font-size:23px;font-weight:600;margin-top:20px;position:relative;z-index:1;line-height:1.25}
+.top h1{font-size:22px;font-weight:800;margin-top:20px;position:relative;z-index:1;line-height:1.25;letter-spacing:-.03em}
 .top p{font-size:13px;color:rgba(247,239,232,.66);margin:8px 0 0;line-height:1.55;position:relative;z-index:1;max-width:88%}
 
 /* ---------- categorias ---------- */
@@ -50,7 +46,7 @@ h1,h2,h3{margin:0;letter-spacing:-.02em}
 .cat.on{background:var(--plum);border-color:var(--plum);color:var(--cream)}
 
 main{padding:12px 16px 0}
-.sec{font-family:var(--serif);font-size:19px;font-weight:600;margin:22px 2px 12px}
+.sec{font-size:17px;font-weight:800;margin:22px 2px 12px;letter-spacing:-.025em}
 
 /* ---------- produtos ---------- */
 .prod{display:flex;gap:11px;align-items:center;background:var(--white);border:1px solid var(--line);
@@ -109,7 +105,7 @@ main{padding:12px 16px 0}
 .sh.on{transform:translate(-50%,0)}
 .sh-h{padding:20px 20px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;position:relative}
 .sh-h .gr{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:36px;height:4px;border-radius:2px;background:var(--line)}
-.sh-h h3{font-family:var(--serif);font-size:20px;font-weight:600;flex:1}
+.sh-h h3{font-size:18px;font-weight:800;flex:1;letter-spacing:-.025em}
 .sh-b{padding:18px 20px calc(var(--safe-bottom) + 24px);overflow-y:auto}
 .x{width:33px;height:33px;border-radius:11px;background:var(--cream);display:grid;place-items:center;flex:none}
 
@@ -121,12 +117,12 @@ main{padding:12px 16px 0}
 .tot{display:flex;justify-content:space-between;align-items:baseline;padding:16px 0 4px;margin-top:4px;
   border-top:2px solid var(--plum)}
 .tot .l{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
-.tot .v{font-family:var(--serif);font-size:26px;font-weight:700}
+.tot .v{font-size:24px;font-weight:800;letter-spacing:-.03em}
 
 .ok-box{text-align:center;padding:16px 8px 6px}
 .ok-box .ci{width:70px;height:70px;border-radius:50%;background:var(--orange-tint);display:grid;place-items:center;
   margin:0 auto 18px;border:2px solid var(--orange)}
-.ok-box h3{font-family:var(--serif);font-size:22px;font-weight:600;margin-bottom:9px}
+.ok-box h3{font-size:20px;font-weight:800;margin-bottom:9px;letter-spacing:-.025em}
 .ok-box p{font-size:13.5px;color:var(--muted);line-height:1.6;margin:0 0 22px}
 
 .toast{position:fixed;bottom:calc(var(--safe-bottom) + 110px);left:50%;transform:translate(-50%,18px);
@@ -195,8 +191,9 @@ const IC={
 const ic=(n,s,c,w)=>'<svg width="'+(s||20)+'" height="'+(s||20)+'" viewBox="0 0 24 24" fill="none" stroke="'+(c||'currentColor')+
   '" stroke-width="'+(w||1.8)+'" stroke-linecap="round" stroke-linejoin="round"><path d="'+IC[n]+'"/></svg>';
 const oMark=sz=>'<span class="om" style="width:'+sz+'px;height:'+sz+'px"><svg viewBox="0 0 24 24" width="'+sz+'" height="'+sz+'">'+
-  '<circle cx="12" cy="12" r="11" fill="#E8924C"/>'+
-  '<path d="M17 8.5a6.2 6.2 0 1 0 1 3.5h-5" fill="none" stroke="#F7EFE8" stroke-width="2.4" stroke-linecap="round"/></svg></span>';
+  '<circle cx="12" cy="12" r="11.5" fill="#E8924C"/>'+
+  '<path d="M5.4 10.4h13.2" stroke="#F7EFE8" stroke-width="2.2" stroke-linecap="round"/>'+
+  '<path d="M7.9 10.9v1.3a4.1 4.1 0 0 0 8.2 0v-1.3" fill="none" stroke="#F7EFE8" stroke-width="2.2" stroke-linecap="round"/></svg></span>';
 
 /* ---------------- helpers ---------------- */
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -301,7 +298,10 @@ function enviar(){
 }
 
 /* ---------------- eventos ---------------- */
-$('#wm').innerHTML='<span>Reob</span>'+oMark(26)+'<span>te</span>';
+$('#wm').innerHTML='<span>Reob</span>'+oMark(24)+'<span>te</span>';
+(function(){ const im=new Image();
+  im.onload=()=>{ $('#wm').innerHTML='<img src="assets/logo.png" alt="Reobote" style="height:46px;width:auto;display:block;border-radius:6px">'; };
+  im.src='assets/logo.png'; })();
 $('#shX').innerHTML=ic('close',17,'var(--muted)');
 $('#barGo').innerHTML=ic('cart',17,'#33170A')+' Revisar pedido';
 $('#ov').onclick=fecha; $('#shX').onclick=fecha;
