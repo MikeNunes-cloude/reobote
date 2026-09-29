@@ -1866,8 +1866,18 @@ function init(){
   fechaCadeado();
   go('home');
 
-  /* PWA */
-  if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+  /* PWA — e se sair versão nova, o aparelho pega sozinho */
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('sw.js').then(reg=>{
+      reg.update();
+      setInterval(()=>reg.update(),30*60*1000);
+      document.addEventListener('visibilitychange',()=>{ if(!document.hidden) reg.update(); });
+    }).catch(()=>{});
+    let jaRecarregou=false;
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{
+      if(jaRecarregou) return; jaRecarregou=true; location.reload();
+    });
+  }
 }
 init();
 </script>
