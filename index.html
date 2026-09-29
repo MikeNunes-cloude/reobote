@@ -136,6 +136,10 @@ main{padding:16px 14px 120px;position:relative;z-index:1}
 .achado.duvida{border-color:rgba(240,178,74,.45)}
 .achado .an{flex:1;min-width:0}
 .achado .an b{display:block;font-size:13.5px;font-weight:700;line-height:1.3}
+.achado .an select{width:100%;background:transparent;border:none;color:var(--cream);
+  font-size:13.5px;font-weight:700;padding:0;outline:none;-webkit-appearance:none;line-height:1.3}
+.achado .an select:focus{color:var(--orange-soft)}
+.achado.duvida .an select{color:var(--orange-soft)}
 .achado .an span{display:block;font-size:11px;color:var(--muted-2);margin-top:2px}
 .achado input{width:62px;text-align:right;padding:9px;border-radius:11px;background:var(--plum-850);
   border:1px solid var(--line);color:var(--cream);font-size:13.5px;font-weight:700}
@@ -2449,7 +2453,7 @@ function interpretaFala(fala){
 }
 
 /* ---------------- tela ---------------- */
-let rec=null, falaFinal='', achadosAtuais=[];
+let rec=null, falaFinal='', achadosAtuais=[], duvidasAtuais=[];
 
 function ditarFalta(){
   if(!DB.insumos.length){
@@ -2502,7 +2506,7 @@ function pintaMic(){
     : 'Pode falar mais, corrigir o texto na mão, ou montar a lista.';
 }
 
-let geracao=0, timerReabrir=null, tentouReviver=false;
+let geracao=0, timerReabrir=null, tentouReviver=false, vigia=null;
 
 /* Derruba qualquer sessão viva e cancela reaberturas pendentes.
    Sem isso, uma sessão presa no navegador impede a próxima de abrir. */
@@ -2522,6 +2526,8 @@ function alternaEscuta(SR){
   falaBase=textoDoCampo(); if(falaBase) falaBase+=' ';
   falaSessao=''; ouviuAlgo=false; reinicios=0; erroEscuta=''; tentouReviver=false;
   ouvindo=true; pintaMic(); vibra(18);
+  clearTimeout(vigia);
+  vigia=setTimeout(()=>{ if(ouvindo&&!ouviuAlgo) avisaSemCaptar(); },9000);
   abreSessao(SR,geracao);
 }
 
@@ -2539,7 +2545,7 @@ function abreSessao(SR,ger){
     let parcial='';
     for(let i=ev.resultIndex;i<ev.results.length;i++){
       const t=ev.results[i][0].transcript;
-      if(ev.results[i].isFinal){ falaSessao+=t+' '; ouviuAlgo=true; }
+      if(ev.results[i].isFinal){ falaSessao+=t+' '; ouviuAlgo=true; clearTimeout(vigia); }
       else parcial+=t;
     }
     escreveCampo(parcial);
@@ -2584,12 +2590,23 @@ function pararEscuta(){
 }
 
 function encerraEscuta(){
-  ouvindo=false; rec=null;
-  falaBase=(falaBase+falaSessao).trim(); falaSessao='';
+  ouvindo=false; rec=null; clearTimeout(vigia);
+  /* o campo é a verdade: pode ter sido corrigido à mão enquanto gravava */
+  const noCampo=textoDoCampo();
+  falaBase=(noCampo||(falaBase+falaSessao)).trim(); falaSessao='';
   falaFinal=falaBase;
   escreveCampo('');
   pintaMic();
   if(!ouviuAlgo && !textoDoCampo()) avisaNadaOuvido();
+}
+
+/* está gravando mas nada chega: avisa sem interromper */
+function avisaSemCaptar(){
+  const r=$('#dtResultado'); if(!r||r.innerHTML) return;
+  r.innerHTML='<div class="alert warn" style="margin-bottom:12px">'+ic('alert',17,'var(--warn)')+
+    '<div style="flex:1"><div class="at">Estou gravando, mas não chegou nada ainda</div>'+
+    '<div class="ad">Fale mais perto do aparelho. Se continuar assim, toque em Refazer e escreva — '+
+    'o microfone do teclado também serve.</div></div></div>';
 }
 
 function avisaNadaOuvido(){
@@ -2610,50 +2627,103 @@ function avisaNadaOuvido(){
 }
 
 function montarDaFala(){
-  pararEscuta();
   const campo=$('#dtOuvido');
   const texto=(campo?campo.textContent.trim():'')||falaFinal.trim();
+  pararEscuta();
   if(!texto){ toast('Fale ou escreva o que está faltando','bad'); return; }
   const {achados,duvidas}=interpretaFala(texto);
   achadosAtuais=achados;
-  if(!achados.length){
+  duvidasAtuais=duvidas;
+  if(!achados.length&&!duvidas.length){
     $('#dtResultado').innerHTML='<div class="alert warn" style="margin-bottom:12px">'+ic('alert',17,'var(--warn)')+
-      '<div style="flex:1"><div class="at">Não reconheci nenhum insumo</div>'+
-      '<div class="ad">Os nomes precisam bater com os que estão cadastrados. Você disse: “'+esc(texto.slice(0,90))+'”.</div></div></div>';
+      '<div style="flex:1"><div class="at">Não reconheci nada</div>'+
+      '<div class="ad">Você disse: “'+esc(texto.slice(0,90))+'”.</div></div></div>';
     $('#dtMontar').classList.remove('hide');
     return;
   }
+  pintaAchados();
+}
+
+/* lista de tudo que pode ser escolhido à mão */
+function opcoesItens(sel){
+  const opt=(o,pref)=>'<option value="'+pref+o.id+'"'+(sel===pref+o.id?' selected':'')+'>'+esc(o.nome)+'</option>';
+  const prod=naFabrica()?'':DB.fichas.filter(f=>f.ativo).map(o=>opt(o,'f:')).join('');
+  const ins=DB.insumos.map(o=>opt(o,'i:')).join('');
+  return (sel===''?'<option value="" selected>escolher…</option>':'')+
+    (prod?'<optgroup label="Produtos">'+prod+'</optgroup>':'')+
+    (ins?'<optgroup label="Insumos">'+ins+'</optgroup>':'');
+}
+function trocaItem(ix,valor){
+  if(!valor) return;
+  const [t,id]=valor.split(':');
+  const obj=t==='f'?gFic(id):gIns(id);
+  if(!obj) return;
+  const a=achadosAtuais[ix];
+  a.ref=obj; a.ins=obj; a.tipo=(t==='f'?'produto':'insumo'); a.un=obj.un; a.nota=1; a.corrigido=true;
+  pintaAchados();
+}
+
+function pintaAchados(){
+  const linha=(a,ix)=>'<div class="achado'+(a.nota<0.7?' duvida':'')+'">'+
+    ic(a.nota<0.7?'alert':'check',17,'var(--'+(a.nota<0.7?'warn':'ok')+')')+
+    '<div class="an">'+
+      '<select data-dtsel="'+ix+'">'+opcoesItens((a.tipo==='produto'?'f:':'i:')+a.ref.id)+'</select>'+
+      '<span>'+(a.corrigido?'trocado por você'
+        :a.nota<0.7?'ouvi “'+esc(a.trecho)+'” — confira'
+        :(a.ditou?'você disse a quantidade':'quantidade sugerida'))+'</span>'+
+    '</div>'+
+    '<input type="number" inputmode="decimal" data-dtq="'+ix+'" value="'+a.qtd+'">'+
+    '<div class="au">'+esc(a.ref.un)+'</div>'+
+    '<button data-dtx="'+ix+'" style="width:28px;height:28px;display:grid;place-items:center">'+
+      ic('close',15,'var(--bad)')+'</button></div>';
+
   $('#dtResultado').innerHTML=
-    '<div class="sec" style="margin-left:0">Encontrei '+achados.length+' '+(achados.length===1?'item':'itens')+'</div>'+
-    achados.map((a,ix)=>'<div class="achado'+(a.nota<0.7?' duvida':'')+'">'+
-      ic(a.nota<0.7?'alert':'check',17,'var(--'+(a.nota<0.7?'warn':'ok')+')')+
-      '<div class="an"><b>'+esc(a.ins.nome)+'</b><span>'+
-        (a.nota<0.7?'ouvi “'+esc(a.trecho)+'” — confira':(a.ditou?'você disse a quantidade':'quantidade sugerida pelo mínimo'))+
-      '</span></div>'+
-      '<input type="number" inputmode="decimal" data-dtq="'+ix+'" value="'+a.qtd+'">'+
-      '<div class="au">'+esc(a.ins.un)+'</div>'+
-      '<button data-dtx="'+ix+'" style="width:28px;height:28px;display:grid;place-items:center">'+
-        ic('close',15,'var(--bad)')+'</button></div>').join('')+
-    (duvidas.length?'<div class="alert warn" style="margin-top:4px">'+ic('alert',17,'var(--warn)')+
-      '<div style="flex:1"><div class="at">Não entendi '+duvidas.length+' trecho(s)</div>'+
-      '<div class="ad">“'+duvidas.map(d=>esc(d)).join('”, “')+'”. Se for insumo, cadastre com esse nome que da próxima vez eu reconheço.</div></div></div>':'')+
-    '<div class="btnrow"><button class="btn ok" id="dtGerar">'+
+    (achadosAtuais.length?'<div class="sec" style="margin-left:0">Encontrei '+achadosAtuais.length+' '+
+      (achadosAtuais.length===1?'item':'itens')+'<span class="sp"></span>'+
+      '<span style="text-transform:none;letter-spacing:0;color:var(--muted-2)">toque no nome para trocar</span></div>'+
+      achadosAtuais.map(linha).join(''):'')+
+    (duvidasAtuais.length?'<div class="sec" style="margin-left:0">Não entendi</div>'+
+      duvidasAtuais.map((d,k)=>'<div class="achado duvida">'+ic('alert',17,'var(--warn)')+
+        '<div class="an"><b style="font-weight:600;color:var(--muted)">“'+esc(d)+'”</b>'+
+        '<select data-dtnovo="'+k+'">'+opcoesItens('')+'</select></div></div>').join(''):'')+
+    (achadosAtuais.length?'<div class="btnrow"><button class="btn ok" id="dtGerar">'+
       ic(naFabrica()?'phone':'truck',17)+' '+(naFabrica()?'Enviar lista':'Pedir à fábrica')+'</button>'+
-    '<button class="btn ghost" id="dtLimpar">Refazer</button></div>';
+      '<button class="btn ghost" id="dtLimpar">Refazer</button></div>'
+      :'<button class="btn ghost" id="dtLimpar" style="margin-top:10px">Refazer</button>');
 
   $('#dtMontar').classList.add('hide');
+
+  $$('[data-dtsel]').forEach(el=>el.onchange=e=>trocaItem(+e.target.dataset.dtsel,e.target.value));
+  $$('[data-dtnovo]').forEach(el=>el.onchange=e=>{
+    const k=+e.target.dataset.dtnovo, v=e.target.value;
+    if(!v) return;
+    const [t,id]=v.split(':');
+    const obj=t==='f'?gFic(id):gIns(id);
+    if(!obj) return;
+    achadosAtuais.push({ref:obj, ins:obj, tipo:(t==='f'?'produto':'insumo'),
+      qtd:t==='f'?Math.max(1,obj.rend||1):Math.max(1,Math.ceil((obj.min*1.5)-obj.estoque))||1,
+      ditou:false, un:obj.un, nota:1, corrigido:true, trecho:duvidasAtuais[k]});
+    duvidasAtuais.splice(k,1);
+    pintaAchados();
+  });
   $$('[data-dtq]').forEach(el=>el.oninput=e=>{
     achadosAtuais[+e.target.dataset.dtq].qtd=parseFloat(e.target.value.replace(',','.'))||0;
   });
   $$('[data-dtx]').forEach(el=>el.onclick=e=>{
-    achadosAtuais.splice(+e.currentTarget.dataset.dtx,1);
-    e.currentTarget.closest('.achado').remove();
-    if(!achadosAtuais.length) $('#dtResultado').innerHTML='';
+    achadosAtuais.splice(+e.currentTarget.dataset.dtx,1); pintaAchados();
   });
-  $('#dtLimpar').onclick=()=>{ falaFinal=''; falaBase=''; falaSessao=''; achadosAtuais=[];
+  const lim=$('#dtLimpar');
+  if(lim) lim.onclick=()=>{
+    /* deixa o microfone num estado limpo: sem isso a próxima gravação não pega */
+    ouvindo=false; geracao++; limpaRec();
+    falaFinal=''; falaBase=''; falaSessao=''; ouviuAlgo=false; erroEscuta='';
+    achadosAtuais=[]; duvidasAtuais=[];
     $('#dtOuvido').innerHTML=''; $('#dtResultado').innerHTML='';
-    $('#dtMontar').classList.remove('hide'); };
-  $('#dtGerar').onclick=()=>{
+    $('#dtMontar').classList.remove('hide');
+    pintaMic();
+  };
+  const ger=$('#dtGerar');
+  if(ger) ger.onclick=()=>{
     const itens=achadosAtuais.filter(a=>a.qtd>0);
     naFabrica()?listaDaVoz(itens):enviarSolicitacao(itens);
   };
