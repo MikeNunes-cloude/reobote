@@ -79,6 +79,28 @@ acesso mostra um guia com os quatro cadastros iniciais.
 - **Validade/FEFO**: baixa sempre pelo lote que vence primeiro e avisa o que está perto de vencer.
 - **Custos e margem**: margem por item recalculada quando o preço de um insumo muda; sugere preço para 65% de margem.
 - **Lista de compra**: gera o que está abaixo do mínimo e manda pronto no WhatsApp.
+- **Ditado de falta por voz**: a pessoa fala *"acabou o leite condensado, faltam cinco quilos de granola e umas caixas de copo 500"* e o app monta a lista sozinho, já com as quantidades. Onde não foi dita a quantidade, ele sugere pelo estoque mínimo. A lista aparece para conferir e corrigir antes de enviar.
+
+### Como o ditado funciona (e por que não usa IA paga)
+
+A fala vira texto pelo reconhecimento do próprio aparelho (iPhone e Android já têm,
+não custa nada e não precisa de chave de API). O texto é casado com os insumos
+**que estão cadastrados no app** — uma lista curta e conhecida, então o acerto vem de
+comparação de nomes, não de "entender" linguagem solta.
+
+Detalhes que o interpretador resolve:
+- quantidade em número (`10`) ou por extenso (`cinco`, `meio quilo`);
+- unidade falada (`quilos`, `caixas`, `potes`) ou a do cadastro;
+- número que é parte do nome, não quantidade: *"caixas de copo 500"* pede Copo 500ml,
+  não 500 unidades — e *"copo de 300"* traz o Copo 300ml, não o de 500;
+- nome falado pela metade (*"condensado"* → Leite condensado);
+- trechos não reconhecidos ficam à mostra, para cadastrar o insumo com aquele nome.
+
+O texto transcrito fica editável: se o celular ouvir errado, dá para corrigir na mão
+antes de montar a lista. Onde o navegador não escuta (alguns iPhones em modo app),
+o campo aceita o microfone do próprio teclado, que dá no mesmo.
+
+**Precisa de internet** — o reconhecimento de fala é feito fora do aparelho.
 - **Pedidos**: novo → separação → rota → entregue, com baixa de estoque na entrega e aviso ao cliente no WhatsApp.
 - **Portal do cliente**: a revenda monta o pedido e envia; o link cai no app e vira pedido com 1 toque.
 - **Financeiro (senha 2409)**: lucro do período, demonstrativo linha a linha e gráfico dos últimos 6 meses.
