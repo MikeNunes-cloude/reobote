@@ -23,6 +23,30 @@ Uma vez digitada, ela vale até fechar o app; o botão "trancar" fecha antes dis
 O que cada aparelho define é a **unidade** onde está (ícone de loja no topo). Todo
 registro feito nele entra ou sai daquela unidade.
 
+## Pedidos das lojas para a fábrica
+
+Quem está numa **loja** dita o que está faltando e o pedido vai para a **fábrica**,
+que separa e envia. Quem está na **fábrica** dita e sai a lista de compra para o
+fornecedor — o app decide pelo que está escolhido em "quem está operando".
+
+O caminho do pedido:
+
+```
+loja dita  →  fábrica recebe na hora  →  separando  →  enviada  →  loja confirma
+                                                 ↓
+                                    vira transferência e baixa o estoque
+```
+
+Se a fábrica não tiver tudo, ela é avisada do que falta e envia o que tem — o pedido
+guarda quanto foi pedido e quanto realmente saiu.
+
+Para isso funcionar entre aparelhos, rode uma vez no Supabase (SQL Editor) o arquivo
+**`supabase-solicitacoes.sql`**. Sem ele o pedido fica salvo só no aparelho da loja.
+
+> **Limitação atual:** o estoque de **insumos** é único, não separado por loja. Quando a
+> fábrica manda copos para uma loja, o insumo sai do estoque geral. Produto pronto, esse
+> sim, é controlado por unidade.
+
 ## Pedidos em tempo real — PASSO OBRIGATÓRIO
 
 O pedido feito no portal aparece no app **na hora**, com som e notificação. Para isso

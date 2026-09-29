@@ -407,6 +407,13 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
     <div class="sec">Produtos</div><div id="fichaList"></div>
   </div>
 
+  <div class="view" id="v-solic">
+    <div class="sec"><button data-back="mais">&larr; voltar</button><span class="sp"></span><button id="btnDitar2">+ ditar</button></div>
+    <div class="grid2" id="solicKpis"></div>
+    <div class="sec" id="solicTitulo">Pedidos</div>
+    <div id="solicList"></div>
+  </div>
+
   <div class="view" id="v-transf">
     <div class="sec"><button data-back="mais">&larr; voltar</button><span class="sp"></span><button id="btnNovaTransf">+ transferir</button></div>
     <div id="transfList"></div>
@@ -615,14 +622,17 @@ function seed(){
     ],
     insumos:[], fichas:[], clientes:[], freezers:[],
     producoes:[], estoque:[], transf:[], perdas:[], temps:[], pedidos:[],
-    despesas:[], caixa:[],
+    despesas:[], caixa:[], solicitacoes:[],
     cfg:{unidade:'u1', metaLitrosDia:0, alertaValidade:15, versao:'2.1'},
   };
 }
 
-/* Os dados de demonstração da versão anterior saem do ar sozinhos. */
+/* Os dados de demonstração da versão anterior saem do ar sozinhos.
+   Confere id E nome: um cadastro de verdade nunca é apagado por engano. */
 function ehDemo(d){
-  return (d.insumos||[]).some(i=>i.id==='i1') || (d.fichas||[]).some(f=>f.id==='f1');
+  const i=(d.insumos||[]).find(x=>x.id==='i1');
+  const f=(d.fichas||[]).find(x=>x.id==='f1');
+  return (!!i&&i.nome==='Polpa de açaí') || (!!f&&f.nome==='Sorvete Chocolate'&&(f.itens||[]).length>0);
 }
 
 function load(){
@@ -636,6 +646,7 @@ function load(){
   delete DB.users; delete DB.equipe; delete DB.cfg.operador;
   if(!DB.despesas) DB.despesas=[];
   if(!DB.caixa) DB.caixa=[];
+  if(!DB.solicitacoes) DB.solicitacoes=[];
   DB.cfg.versao=base.cfg.versao;
 }
 function save(){ try{ localStorage.setItem(KEY,JSON.stringify(DB)); }catch(e){ toast('Sem espaço para salvar','bad'); } }
@@ -705,6 +716,12 @@ function alertas(){
     if(ult&&ult.temp>f.alvo+3) A.push({n:'bad',t:f.cod+' fora da faixa',d:num(ult.temp,1)+'°C · alvo '+f.alvo+'°C · '+f.local,a:'ver',go:()=>{go('frio');abrirFreezer(f.id);}});
     else if(!hj.length) A.push({n:'warn',t:f.cod+' sem leitura hoje',d:f.local,a:'medir',go:()=>{go('frio');medirTemp(f.id);}});
   });
+  const solNovas=DB.solicitacoes.filter(x=>x.status==='nova').length;
+  if(naFabrica()&&solNovas) A.push({n:'warn',t:solNovas+' pedido'+(solNovas>1?'s':'')+' de loja para separar',
+    d:'As lojas pediram reposição',a:'separar',go:()=>go('solic')});
+  const minhasChegando=DB.solicitacoes.filter(x=>x.unidade===DB.cfg.unidade&&x.status==='enviada').length;
+  if(!naFabrica()&&minhasChegando) A.push({n:'ok',t:minhasChegando+' pedido'+(minhasChegando>1?'s':'')+' a caminho',
+    d:'A fábrica já enviou — confirme quando chegar',a:'ver',go:()=>go('solic')});
   const novos=DB.pedidos.filter(p=>p.status==='novo').length;
   if(novos) A.push({n:'ok',t:novos+' pedido'+(novos>1?'s':'')+' aguardando',d:'Recebidos pelo portal do cliente',a:'abrir',go:()=>go('ped')});
   const rec=DB.transf.filter(t=>t.status==='enviado'&&t.para===DB.cfg.unidade).length;
@@ -717,6 +734,12 @@ function alertas(){
    ===================================================================== */
 const NAV=[['home','Início','home'],['prod','Produção','prod'],['est','Estoque','box'],['ped','Pedidos','cart'],['fin','Financeiro','money']];
 function renderNav(){
+  const solNovas=DB.solicitacoes.filter(x=>x.status==='nova').length;
+  if(naFabrica()&&solNovas) A.push({n:'warn',t:solNovas+' pedido'+(solNovas>1?'s':'')+' de loja para separar',
+    d:'As lojas pediram reposição',a:'separar',go:()=>go('solic')});
+  const minhasChegando=DB.solicitacoes.filter(x=>x.unidade===DB.cfg.unidade&&x.status==='enviada').length;
+  if(!naFabrica()&&minhasChegando) A.push({n:'ok',t:minhasChegando+' pedido'+(minhasChegando>1?'s':'')+' a caminho',
+    d:'A fábrica já enviou — confirme quando chegar',a:'ver',go:()=>go('solic')});
   const novos=DB.pedidos.filter(p=>p.status==='novo').length;
   $('#nav').innerHTML=NAV.map(([id,lb,i])=>{
     const off=!can(id);
@@ -904,7 +927,12 @@ RENDER.mais=()=>{
   $('#maisCad').innerHTML=[linha('insumos','cup','Insumos','Matéria-prima, embalagem e custo'),
     linha('fichas','recipe','Produtos','Sabores, taças e açaí — foto, preço e receita'),
     linha('clientes','store','Clientes','Revendas e pontos de venda')].join('');
-  $('#maisOp').innerHTML=[linha('transf','truck','Transferências','Fábrica → loja com aceite'),
+  const abertasSol=DB.solicitacoes.filter(x=>['nova','separando','enviada'].includes(x.status)
+    &&(naFabrica()||x.unidade===DB.cfg.unidade)).length;
+  $('#maisOp').innerHTML=[
+    linha('solic','truck',naFabrica()?'Pedidos das lojas':'Meus pedidos à fábrica',
+      abertasSol?abertasSol+' em aberto':'nada pendente'),
+    linha('transf','truck','Transferências','Fábrica → loja com aceite'),
     linha('perdas','trash','Perdas e quebras','Derretimento, validade, avaria'),
     linha('frio','thermo','Cadeia de frio','Freezers e leitura de temperatura')].join('');
   $('#maisGest').innerHTML=[linha('custos','money','Custos e margem','Quanto sobra em cada item')].join('');
@@ -2188,10 +2216,17 @@ function iniciaNuvem(){
       .subscribe(st=>{ nuvem.ligado=(st==='SUBSCRIBED'); if(VIEW==='config') RENDER.config(); });
   }catch(e){}
 
+  try{
+    sb.channel('reobote-solicitacoes')
+      .on('postgres_changes',{event:'*',schema:'public',table:'reobote_solicitacoes'},
+        p=>recebeSolicitacao(p.new,p.eventType==='INSERT'&&naFabrica()))
+      .subscribe();
+  }catch(e){}
+
   /* rede de segurança: se o tempo real cair, ainda buscamos */
-  puxaPedidos();
-  setInterval(puxaPedidos,20000);
-  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) puxaPedidos(); });
+  puxaPedidos(); puxaSolicitacoes();
+  setInterval(()=>{ puxaPedidos(); puxaSolicitacoes(); },20000);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ puxaPedidos(); puxaSolicitacoes(); } });
 }
 
 async function puxaPedidos(){
@@ -2316,14 +2351,17 @@ function semelhanca(a,b){
   A.forEach(x=>{ const i=B.indexOf(x); if(i>=0){ iguais++; B.splice(i,1); } });
   return (2*iguais)/(bigramas(a).length+bigramas(b).length);
 }
-/* acha o insumo cadastrado mais parecido com o que foi falado */
-function achaInsumo(texto){
+/* Acha o item mais parecido com o que foi falado.
+   Na fábrica isso é compra de insumo; na loja é pedido à fábrica, e aí
+   também entram os produtos prontos (sorvete, açaí, taça). */
+function achaItem(texto){
   const alvo=semAcento(texto);
   if(alvo.length<2) return null;
-  let melhor=null, nota=0;
   const numAlvo=(alvo.match(/\d+/g)||[]);
-  DB.insumos.forEach(i=>{
-    const nome=semAcento(i.nome);
+  let melhor=null, nota=0, tipo='';
+
+  const avalia=(obj,qualTipo)=>{
+    const nome=semAcento(obj.nome);
     let n=semelhanca(alvo,nome);
     /* "copo 300" não pode casar com "Copo 500ml" */
     if(numAlvo.length){
@@ -2336,10 +2374,14 @@ function achaInsumo(texto){
     /* todas as palavras faladas existem no nome */
     const palavras=alvo.split(' ').filter(p=>p.length>2);
     if(palavras.length&&palavras.every(p=>nome.includes(p))) n=Math.max(n,0.88);
-    if(n>nota){ nota=n; melhor=i; }
-  });
-  return nota>=0.46?{ins:melhor,nota}:null;
+    if(n>nota){ nota=n; melhor=obj; tipo=qualTipo; }
+  };
+
+  DB.insumos.forEach(i=>avalia(i,'insumo'));
+  if(!naFabrica()) DB.fichas.filter(f=>f.ativo).forEach(f=>avalia(f,'produto'));
+  return nota>=0.46?{ref:melhor,tipo,nota}:null;
 }
+const naFabrica=()=>(gUn(DB.cfg.unidade).tipo==='fabrica');
 
 let NUMEROS_DE_NOMES=new Set();
 function mapeiaNumerosDeNomes(){
@@ -2386,11 +2428,14 @@ function interpretaFala(fala){
     nome=nome.replace(RUIDO,' ').replace(/\s+/g,' ').trim();
     if(!nome) return;
 
-    const achou=achaInsumo(nome);
+    const achou=achaItem(nome);
     if(achou){
-      if(achados.some(a=>a.ins.id===achou.ins.id)) return;   /* falou duas vezes */
-      const sugerido=Math.max(1,Math.ceil((achou.ins.min*1.5)-achou.ins.estoque))||1;
-      achados.push({ins:achou.ins, qtd:qtd||sugerido, ditou:qtd!=null, un:un||achou.ins.un,
+      if(achados.some(a=>a.ref.id===achou.ref.id)) return;   /* falou duas vezes */
+      let sugerido=1;
+      if(achou.tipo==='insumo') sugerido=Math.max(1,Math.ceil((achou.ref.min*1.5)-achou.ref.estoque))||1;
+      else sugerido=Math.max(1,achou.ref.rend||1);   /* produto: um lote inteiro (o balde) */
+      achados.push({ref:achou.ref, tipo:achou.tipo, ins:achou.ref,
+        qtd:qtd||sugerido, ditou:qtd!=null, un:un||achou.ref.un,
         nota:achou.nota, trecho:trecho.trim()});
     } else {
       duvidas.push(trecho.trim());
@@ -2414,7 +2459,9 @@ function ditarFalta(){
   falaFinal=''; falaBase=''; falaSessao=''; achadosAtuais=[];
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 
-  sheet('Ditar o que está faltando','Fale normal, como falaria com um colega',
+  sheet('Ditar o que está faltando',
+    naFabrica()?'Vira lista de compra para o fornecedor'
+               :'Vira pedido para a fábrica preparar e mandar',
     '<div class="micwrap">'+
       '<button class="mic" id="dtMic">'+ic('mic',40,'currentColor',1.9)+'</button>'+
       '<div class="micdica" id="dtDica">'+(SR
@@ -2451,21 +2498,40 @@ function pintaMic(){
     : 'Pode falar mais, corrigir o texto na mão, ou montar a lista.';
 }
 
-function alternaEscuta(SR){
-  if(ouvindo){ pararEscuta(); return; }
-  falaBase=textoDoCampo(); if(falaBase) falaBase+=' ';
-  falaSessao=''; ouviuAlgo=false; reinicios=0; erroEscuta='';
-  ouvindo=true; pintaMic(); vibra(18);
-  abreSessao(SR);
+let geracao=0, timerReabrir=null, tentouReviver=false;
+
+/* Derruba qualquer sessão viva e cancela reaberturas pendentes.
+   Sem isso, uma sessão presa no navegador impede a próxima de abrir. */
+function limpaRec(){
+  clearTimeout(timerReabrir); timerReabrir=null;
+  if(rec){
+    try{ rec.onresult=null; rec.onerror=null; rec.onend=null; }catch(e){}
+    try{ rec.abort(); }catch(e){ try{ rec.stop(); }catch(_){} }
+    rec=null;
+  }
 }
 
-function abreSessao(SR){
-  try{
-    rec=new SR();
-    rec.lang='pt-BR'; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
-  }catch(e){ ouvindo=false; pintaMic(); toast('Não consegui abrir o microfone','bad'); return; }
+function alternaEscuta(SR){
+  if(ouvindo){ pararEscuta(); return; }
+  limpaRec();
+  geracao++;                       /* invalida retornos da escuta anterior */
+  falaBase=textoDoCampo(); if(falaBase) falaBase+=' ';
+  falaSessao=''; ouviuAlgo=false; reinicios=0; erroEscuta=''; tentouReviver=false;
+  ouvindo=true; pintaMic(); vibra(18);
+  abreSessao(SR,geracao);
+}
 
-  rec.onresult=ev=>{
+function abreSessao(SR,ger){
+  if(ger!==geracao||!ouvindo) return;
+  let r;
+  try{
+    r=new SR();
+    r.lang='pt-BR'; r.continuous=true; r.interimResults=true; r.maxAlternatives=1;
+  }catch(e){ ouvindo=false; pintaMic(); toast('Não consegui abrir o microfone','bad'); return; }
+  rec=r;
+
+  r.onresult=ev=>{
+    if(ger!==geracao) return;
     let parcial='';
     for(let i=ev.resultIndex;i<ev.results.length;i++){
       const t=ev.results[i][0].transcript;
@@ -2474,24 +2540,42 @@ function abreSessao(SR){
     }
     escreveCampo(parcial);
   };
-  rec.onerror=ev=>{
-    if(ev.error==='aborted') return;            /* é o próprio stop(), não é falha */
+  r.onerror=ev=>{
+    if(ger!==geracao) return;
+    if(ev.error==='aborted') return;          /* é o próprio stop, não é falha */
     erroEscuta=ev.error||'';
-    /* permissão, aparelho ou falta de internet: reabrir não resolve */
     if(['not-allowed','service-not-allowed','audio-capture','network'].indexOf(erroEscuta)>=0) ouvindo=false;
   };
-  rec.onend=()=>{
+  r.onend=()=>{
+    if(ger!==geracao) return;
     rec=null;
-    if(ouvindo && reinicios<60){ reinicios++; setTimeout(()=>{ if(ouvindo) abreSessao(SR); },150); return; }
+    /* o navegador corta a cada pausa: reabre enquanto ela não mandar parar */
+    if(ouvindo && reinicios<60){
+      reinicios++;
+      timerReabrir=setTimeout(()=>abreSessao(SR,ger),180);
+      return;
+    }
     encerraEscuta();
   };
-  try{ rec.start(); }
-  catch(e){ /* já estava aberta: o onend reabre */ }
+
+  try{ r.start(); }
+  catch(e){
+    /* sessão anterior ainda presa no navegador — derruba e tenta uma vez */
+    rec=null;
+    if(!tentouReviver){
+      tentouReviver=true;
+      limpaRec();
+      timerReabrir=setTimeout(()=>{ if(ger===geracao&&ouvindo) abreSessao(SR,ger); },400);
+    } else {
+      erroEscuta='ocupado'; ouvindo=false; encerraEscuta();
+    }
+  }
 }
 
 function pararEscuta(){
   ouvindo=false;
-  if(rec){ try{ rec.stop(); }catch(e){ rec=null; encerraEscuta(); } }
+  clearTimeout(timerReabrir); timerReabrir=null;
+  if(rec){ try{ rec.stop(); }catch(e){ limpaRec(); encerraEscuta(); } }
   else encerraEscuta();
 }
 
@@ -2510,6 +2594,7 @@ function avisaNadaOuvido(){
     'service-not-allowed':['O microfone está bloqueado','Libere o microfone para este site nas configurações do navegador.'],
     'audio-capture':['Não achei microfone','Este aparelho não disponibilizou um microfone para o navegador.'],
     'network':['Sem internet','O ditado manda o áudio para fora do aparelho, então precisa de conexão.'],
+    'ocupado':['O microfone ficou ocupado','Outra gravação ainda estava aberta. Toque no microfone de novo — se insistir, feche e abra esta janela.'],
   }[erroEscuta]||['Não consegui ouvir','Fale mais perto do aparelho. Se não funcionar, escreva usando o microfone do próprio teclado — dá no mesmo.'];
   const r=$('#dtResultado'); if(!r) return;
   r.innerHTML='<div class="alert warn" style="margin-bottom:12px">'+ic('alert',17,'var(--warn)')+
@@ -2548,7 +2633,8 @@ function montarDaFala(){
     (duvidas.length?'<div class="alert warn" style="margin-top:4px">'+ic('alert',17,'var(--warn)')+
       '<div style="flex:1"><div class="at">Não entendi '+duvidas.length+' trecho(s)</div>'+
       '<div class="ad">“'+duvidas.map(d=>esc(d)).join('”, “')+'”. Se for insumo, cadastre com esse nome que da próxima vez eu reconheço.</div></div></div>':'')+
-    '<div class="btnrow"><button class="btn ok" id="dtGerar">'+ic('phone',17)+' Enviar lista</button>'+
+    '<div class="btnrow"><button class="btn ok" id="dtGerar">'+
+      ic(naFabrica()?'phone':'truck',17)+' '+(naFabrica()?'Enviar lista':'Pedir à fábrica')+'</button>'+
     '<button class="btn ghost" id="dtLimpar">Refazer</button></div>';
 
   $('#dtMontar').classList.add('hide');
@@ -2563,7 +2649,10 @@ function montarDaFala(){
   $('#dtLimpar').onclick=()=>{ falaFinal=''; falaBase=''; falaSessao=''; achadosAtuais=[];
     $('#dtOuvido').innerHTML=''; $('#dtResultado').innerHTML='';
     $('#dtMontar').classList.remove('hide'); };
-  $('#dtGerar').onclick=()=>listaDaVoz(achadosAtuais.filter(a=>a.qtd>0));
+  $('#dtGerar').onclick=()=>{
+    const itens=achadosAtuais.filter(a=>a.qtd>0);
+    naFabrica()?listaDaVoz(itens):enviarSolicitacao(itens);
+  };
 }
 
 function listaDaVoz(itens){
@@ -2583,9 +2672,234 @@ function listaDaVoz(itens){
 }
 
 document.addEventListener('click',e=>{
-  if(e.target.closest('#btnDitar')) ditarFalta();
+  if(e.target.closest('#btnDitar')||e.target.closest('#btnDitar2')) ditarFalta();
+  const so=e.target.closest('[data-so]'); if(so) abrirSolicitacao(so.dataset.so);
   if(e.target.closest('[data-quick="ditar"]')) ditarFalta();
 });
 /* fechar a folha corta a escuta */
-(function(){ const f=fecha; window.fecha=function(){ pararEscuta(); f(); }; })();
+(function(){ const f=fecha; window.fecha=function(){
+  ouvindo=false; geracao++; limpaRec(); pintaMic(); f();
+}; })();
+</script>
+
+<script>
+/* =====================================================================
+   PEDIDOS DAS LOJAS PARA A FÁBRICA
+   A loja dita o que está faltando; a fábrica recebe na hora, separa e
+   envia. O envio vira transferência, que a loja confirma ao receber.
+   ===================================================================== */
+const ST_SOLIC={
+  nova:      ['Aguardando','brand'],
+  separando: ['Separando','info'],
+  enviada:   ['A caminho','warn'],
+  recebida:  ['Recebida','ok'],
+  cancelada: ['Cancelada','bad'],
+};
+
+function enviarSolicitacao(itens){
+  if(!itens.length){ toast('Nenhum item no pedido','bad'); return; }
+  const un=gUn(DB.cfg.unidade);
+  sheet('Pedir à fábrica',un.nome+' · '+itens.length+' itens',
+    itens.map(a=>'<div class="achado"><div class="an"><b>'+esc(a.ref.nome)+'</b>'+
+      '<span>'+(a.tipo==='produto'?'produto pronto':'insumo')+'</span></div>'+
+      '<div class="mono" style="font-size:14px;font-weight:800">'+num(a.qtd,1)+'</div>'+
+      '<div class="au">'+esc(a.ref.un)+'</div></div>').join('')+
+    '<div class="f" style="margin-top:14px"><label>Recado para a fábrica</label>'+
+      '<input id="soObs" placeholder="Ex.: precisa chegar antes de sexta"></div>'+
+    '<button class="btn" id="soEnviar">'+ic('truck',18)+' Enviar pedido</button>');
+  $('#soEnviar').onclick=async()=>{
+    const so={
+      id:'s'+uid(), unidade:DB.cfg.unidade, unidade_nome:un.nome, quem:quem(),
+      obs:val('soObs'), status:'nova', criado_em:new Date().toISOString(),
+      itens:itens.map(a=>({tipo:a.tipo,ref:a.ref.id,nome:a.ref.nome,qtd:a.qtd,un:a.ref.un})),
+    };
+    DB.solicitacoes.push(so); save();
+    const foi=await mandaSolicitacaoNuvem(so);
+    fecha(); vibra(20);
+    toast(foi?'Pedido enviado à fábrica':'Pedido salvo — vai para a fábrica quando a internet voltar',foi?'ok':'');
+    go('solic');
+  };
+}
+
+async function mandaSolicitacaoNuvem(so){
+  if(!sb) return false;
+  try{
+    const {error}=await sb.from('reobote_solicitacoes').insert({
+      id:so.id, unidade:so.unidade, unidade_nome:so.unidade_nome, quem:so.quem,
+      obs:so.obs, itens:so.itens, status:so.status
+    });
+    if(error) throw error;
+    so.naNuvem=true; save();
+    return true;
+  }catch(e){ return false; }
+}
+/* o que não subiu por falta de internet sobe depois */
+async function reenviaPendentes(){
+  if(!sb) return;
+  const pend=DB.solicitacoes.filter(s=>!s.naNuvem&&s.unidade===DB.cfg.unidade);
+  for(const s of pend){ await mandaSolicitacaoNuvem(s); }
+}
+
+function recebeSolicitacao(r,avisar){
+  if(!r||!r.id) return false;
+  const j=DB.solicitacoes.find(s=>s.id===r.id);
+  const obj={id:r.id,unidade:r.unidade,unidade_nome:r.unidade_nome,quem:r.quem,obs:r.obs,
+    itens:r.itens||[],status:r.status||'nova',criado_em:r.criado_em,naNuvem:true};
+  if(j){
+    if(j.status===obj.status) return false;
+    Object.assign(j,obj); save();
+    RENDER[VIEW]&&RENDER[VIEW]();
+    return false;
+  }
+  DB.solicitacoes.push(obj);
+  if(avisar){ save(); avisaSolicitacao(obj); RENDER[VIEW]&&RENDER[VIEW](); renderNav(); }
+  return true;
+}
+
+function avisaSolicitacao(so){
+  try{ bip(); }catch(e){}
+  vibra([90,60,90]);
+  toast('Pedido de '+so.unidade_nome+' · '+so.itens.length+' itens','ok');
+  try{
+    if('Notification' in window && Notification.permission==='granted'){
+      new Notification('Pedido de '+so.unidade_nome,{body:so.itens.length+' itens para separar',icon:'assets/icon-192.png'});
+    }
+  }catch(e){}
+}
+
+async function puxaSolicitacoes(){
+  if(!sb) return;
+  try{
+    const desde=new Date(Date.now()-30*864e5).toISOString();
+    const {data,error}=await sb.from('reobote_solicitacoes').select('*')
+      .gte('criado_em',desde).order('criado_em',{ascending:false}).limit(200);
+    if(error) throw error;
+    let novos=0;
+    (data||[]).forEach(r=>{ if(recebeSolicitacao(r,false)) novos++; });
+    if(novos){ save(); if(naFabrica()) avisaSolicitacao(DB.solicitacoes[DB.solicitacoes.length-1]);
+      RENDER[VIEW]&&RENDER[VIEW](); renderNav(); }
+    reenviaPendentes();
+  }catch(e){
+    if((e&&e.message||'').includes('reobote_solicitacoes')) nuvem.semSolic=true;
+  }
+}
+
+async function mudaStatusSolic(so,novo){
+  so.status=novo; save();
+  if(sb){ try{ await sb.from('reobote_solicitacoes')
+    .update({status:novo,atualizado_em:new Date().toISOString()}).eq('id',so.id); }catch(e){} }
+  RENDER[VIEW]&&RENDER[VIEW]();
+}
+
+/* ---------------- tela ---------------- */
+RENDER.solic=()=>{
+  const daFabrica=naFabrica();
+  const t=$('#solicTitulo'); if(t) t.textContent=daFabrica?'Pedidos das lojas':'Meus pedidos à fábrica';
+  const L=[...DB.solicitacoes]
+    .filter(s=>daFabrica||s.unidade===DB.cfg.unidade)
+    .sort((a,b)=>String(b.criado_em).localeCompare(String(a.criado_em)));
+  const abertas=L.filter(s=>['nova','separando','enviada'].includes(s.status));
+
+  $('#solicKpis').innerHTML=[
+    kpi(daFabrica?'Para separar':'Pedidos abertos',abertas.length,
+      abertas.length?'aguardando a fábrica':'nada pendente',abertas.length?'warn':'good','truck'),
+    kpi('No mês',L.filter(s=>String(s.criado_em).slice(0,7)===hoje().slice(0,7)).length,'pedidos feitos','brand','cart'),
+  ].join('');
+
+  $('#solicList').innerHTML=L.length?L.map(s=>{
+    const st=ST_SOLIC[s.status]||['—',''];
+    return '<button class="item" data-so="'+s.id+'"><div class="ic">'+ic('truck',18,'var(--orange)')+'</div>'+
+      '<div class="bd"><div class="t">'+esc(s.unidade_nome)+'</div>'+
+      '<div class="s">'+s.itens.length+' itens · '+fmtDH(s.criado_em)+' · '+esc(s.quem||'')+'</div></div>'+
+      '<div class="rt"><span class="tag '+st[1]+'">'+st[0]+'</span></div></button>';
+  }).join(''):vazio('truck',daFabrica?'Nenhum pedido das lojas':'Você ainda não pediu nada',
+    daFabrica?'Quando uma loja ditar o que está faltando, o pedido chega aqui na hora.'
+             :'Toque em "Ditar falta" e fale o que está acabando — o pedido vai direto para a fábrica.');
+};
+
+function abrirSolicitacao(id){
+  const so=DB.solicitacoes.find(s=>s.id===id); if(!so) return;
+  const daFabrica=naFabrica();
+  const st=ST_SOLIC[so.status]||['—',''];
+  const prox={nova:['separando','Iniciar separação'],separando:['enviada','Marcar como enviado']}[so.status];
+
+  sheet(so.unidade_nome,fmtDH(so.criado_em)+' · '+esc(so.quem||''),
+    so.itens.map(it=>{
+      const temEstoque=it.tipo==='produto'
+        ? estoqueDe(it.ref,DB.cfg.unidade)
+        : ((gIns(it.ref)||{}).estoque||0);
+      const falta=daFabrica&&temEstoque<it.qtd;
+      return '<div class="item" style="margin-bottom:6px"><div class="bd">'+
+        '<div class="t" style="font-size:13.5px">'+esc(it.nome)+'</div>'+
+        '<div class="s"'+(falta?' style="color:var(--bad)"':'')+'>'+
+        (it.tipo==='produto'?'produto pronto':'insumo')+
+        (daFabrica?' · temos '+num(temEstoque,1)+it.un:'')+(falta?' — não dá':'')+'</div></div>'+
+        '<div class="rt"><div class="rv mono">'+num(it.qtd,1)+'</div><div class="rs">'+
+        (it.enviado!==undefined&&it.enviado!==it.qtd
+          ?'<span class="tag bad">foi '+num(it.enviado,1)+'</span>'
+          :esc(it.un))+'</div></div></div>';
+    }).join('')+
+    (so.obs?'<div class="card" style="margin-top:10px;font-size:12.5px;color:var(--warn)">'+esc(so.obs)+'</div>':'')+
+    '<div style="margin:14px 0;text-align:center"><span class="tag '+st[1]+'">'+st[0]+'</span></div>'+
+    (daFabrica&&prox?'<button class="btn" id="soProx">'+ic('check',18)+' '+prox[1]+'</button>':'')+
+    (daFabrica&&so.status==='separando'?
+      '<div class="hint" style="margin-top:9px">Ao marcar como enviado, o app cria a transferência e baixa o estoque da fábrica. '+
+      'A loja confirma quando receber.</div>':'')+
+    (!daFabrica&&so.status==='enviada'?
+      '<button class="btn ok" id="soReceber">'+ic('check',18)+' Confirmar que chegou</button>':'')+
+    (['nova','separando'].includes(so.status)?
+      '<button class="btn danger" id="soCancelar" style="margin-top:9px">Cancelar pedido</button>':''));
+
+  if(daFabrica&&prox) $('#soProx').onclick=async()=>{
+    if(prox[0]==='enviada'){
+      const plano=conferEnvio(so);
+      const faltando=plano.filter(p=>p.falta>0);
+      if(faltando.length){
+        const lista=faltando.map(p=>'• '+p.it.nome+': pediram '+num(p.it.qtd,1)+p.it.un+
+          ', temos '+num(p.tem,1)+p.it.un).join('\n');
+        if(!confirm('Não dá para enviar tudo:\n\n'+lista+'\n\nEnviar o que tem e avisar a loja?')) return;
+      }
+      if(!plano.some(p=>p.envia>0)){ toast('Não há nada em estoque para enviar','bad'); return; }
+      criaTransferenciaDaSolic(so,plano);
+    }
+    await mudaStatusSolic(so,prox[0]);
+    fecha(); toast(prox[0]==='enviada'?'Enviado para '+so.unidade_nome:'Separação iniciada','ok');
+    go('solic');
+  };
+  if(!daFabrica&&so.status==='enviada') $('#soReceber').onclick=async()=>{
+    await mudaStatusSolic(so,'recebida'); fecha(); toast('Recebimento confirmado','ok'); go('solic');
+  };
+  if(['nova','separando'].includes(so.status)) $('#soCancelar').onclick=async()=>{
+    if(!confirm('Cancelar este pedido?')) return;
+    await mudaStatusSolic(so,'cancelada'); fecha(); go('solic');
+  };
+}
+
+/* o envio vira transferência: baixa da fábrica e espera o aceite da loja.
+   Manda o que existe de verdade — nunca deixa o estoque zerar em silêncio. */
+function conferEnvio(so){
+  return so.itens.map(it=>{
+    const tem=it.tipo==='produto' ? estoqueDe(it.ref,DB.cfg.unidade)
+                                  : ((gIns(it.ref)||{}).estoque||0);
+    return {it, tem, envia:Math.min(it.qtd,tem), falta:Math.max(0,it.qtd-tem)};
+  });
+}
+function criaTransferenciaDaSolic(so,plano){
+  const itens=[];
+  plano.forEach(p=>{
+    if(p.envia<=0) return;
+    if(p.it.tipo==='produto'){
+      baixaEstoque(DB.cfg.unidade,p.it.ref,p.envia);
+      itens.push({fid:p.it.ref,qtd:p.envia});
+    } else {
+      const i=gIns(p.it.ref); if(i) i.estoque=Math.max(0,i.estoque-p.envia);
+    }
+    p.it.enviado=p.envia;
+  });
+  if(itens.length){
+    DB.transf.push({id:uid(),de:DB.cfg.unidade,para:so.unidade,itens,status:'enviado',
+      data:hoje(),ts:Date.now(),quem:quem(),origemSolic:so.id});
+  }
+  save();
+}
 </script>
