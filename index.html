@@ -734,12 +734,6 @@ function alertas(){
    ===================================================================== */
 const NAV=[['home','Início','home'],['prod','Produção','prod'],['est','Estoque','box'],['ped','Pedidos','cart'],['fin','Financeiro','money']];
 function renderNav(){
-  const solNovas=DB.solicitacoes.filter(x=>x.status==='nova').length;
-  if(naFabrica()&&solNovas) A.push({n:'warn',t:solNovas+' pedido'+(solNovas>1?'s':'')+' de loja para separar',
-    d:'As lojas pediram reposição',a:'separar',go:()=>go('solic')});
-  const minhasChegando=DB.solicitacoes.filter(x=>x.unidade===DB.cfg.unidade&&x.status==='enviada').length;
-  if(!naFabrica()&&minhasChegando) A.push({n:'ok',t:minhasChegando+' pedido'+(minhasChegando>1?'s':'')+' a caminho',
-    d:'A fábrica já enviou — confirme quando chegar',a:'ver',go:()=>go('solic')});
   const novos=DB.pedidos.filter(p=>p.status==='novo').length;
   $('#nav').innerHTML=NAV.map(([id,lb,i])=>{
     const off=!can(id);
