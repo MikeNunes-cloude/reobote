@@ -2411,7 +2411,7 @@ function ditarFalta(){
     $('#dtIr').onclick=()=>{ fecha(); go('insumos'); editarInsumo(); };
     return;
   }
-  falaFinal=''; achadosAtuais=[];
+  falaFinal=''; falaBase=''; falaSessao=''; achadosAtuais=[];
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 
   sheet('Ditar o que está faltando','Fale normal, como falaria com um colega',
@@ -2431,42 +2431,93 @@ function ditarFalta(){
   $('#dtMontar').onclick=montarDaFala;
 }
 
+/* A escuta do navegador termina sozinha a cada pausa — mesmo com continuous.
+   Por isso a sessão é reaberta automaticamente enquanto a pessoa não mandar
+   parar, e o texto já digitado nunca é descartado. */
+let ouvindo=false, falaBase='', falaSessao='', ouviuAlgo=false, reinicios=0, erroEscuta='';
+
+const textoDoCampo=()=>{ const c=$('#dtOuvido'); return c?c.textContent.trim():''; };
+function escreveCampo(parcial){
+  const c=$('#dtOuvido'); if(!c) return;
+  c.innerHTML=esc((falaBase+falaSessao).trim()+(falaSessao?' ':''))+
+    (parcial?'<span class="parcial">'+esc(parcial)+'</span>':'');
+  c.scrollTop=c.scrollHeight;
+}
+function pintaMic(){
+  const b=$('#dtMic'), d=$('#dtDica');
+  if(b) b.classList.toggle('ouvindo',ouvindo);
+  if(d) d.innerHTML=ouvindo
+    ? 'Estou ouvindo. Pode falar com calma — toque de novo quando terminar.'
+    : 'Pode falar mais, corrigir o texto na mão, ou montar a lista.';
+}
+
 function alternaEscuta(SR){
-  const btn=$('#dtMic'), cx=$('#dtOuvido');
-  if(rec){ pararEscuta(); return; }
+  if(ouvindo){ pararEscuta(); return; }
+  falaBase=textoDoCampo(); if(falaBase) falaBase+=' ';
+  falaSessao=''; ouviuAlgo=false; reinicios=0; erroEscuta='';
+  ouvindo=true; pintaMic(); vibra(18);
+  abreSessao(SR);
+}
+
+function abreSessao(SR){
   try{
     rec=new SR();
-    rec.lang='pt-BR'; rec.continuous=true; rec.interimResults=true;
-  }catch(e){ toast('Não consegui abrir o microfone','bad'); rec=null; return; }
+    rec.lang='pt-BR'; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
+  }catch(e){ ouvindo=false; pintaMic(); toast('Não consegui abrir o microfone','bad'); return; }
 
-  rec.onstart=()=>{ btn.classList.add('ouvindo');
-    $('#dtDica').innerHTML='Estou ouvindo... toque de novo para parar.'; vibra(18); };
   rec.onresult=ev=>{
     let parcial='';
     for(let i=ev.resultIndex;i<ev.results.length;i++){
       const t=ev.results[i][0].transcript;
-      if(ev.results[i].isFinal) falaFinal+=t+' '; else parcial+=t;
+      if(ev.results[i].isFinal){ falaSessao+=t+' '; ouviuAlgo=true; }
+      else parcial+=t;
     }
-    cx.innerHTML=esc(falaFinal)+(parcial?'<span class="parcial">'+esc(parcial)+'</span>':'');
-    cx.scrollTop=cx.scrollHeight;
+    escreveCampo(parcial);
   };
   rec.onerror=ev=>{
-    const msg={
-      'not-allowed':'Precisa permitir o microfone nas configurações do navegador',
-      'service-not-allowed':'Precisa permitir o microfone nas configurações do navegador',
-      'no-speech':'Não ouvi nada — chegue mais perto e tente de novo',
-      'audio-capture':'Não achei microfone neste aparelho',
-      'network':'O ditado precisa de internet',
-    }[ev.error]||'Não consegui ouvir agora';
-    toast(msg,'bad'); pararEscuta();
+    if(ev.error==='aborted') return;            /* é o próprio stop(), não é falha */
+    erroEscuta=ev.error||'';
+    /* permissão, aparelho ou falta de internet: reabrir não resolve */
+    if(['not-allowed','service-not-allowed','audio-capture','network'].indexOf(erroEscuta)>=0) ouvindo=false;
   };
-  rec.onend=()=>{ if(rec) pararEscuta(); };
-  try{ rec.start(); }catch(e){ toast('Não consegui abrir o microfone','bad'); rec=null; }
+  rec.onend=()=>{
+    rec=null;
+    if(ouvindo && reinicios<60){ reinicios++; setTimeout(()=>{ if(ouvindo) abreSessao(SR); },150); return; }
+    encerraEscuta();
+  };
+  try{ rec.start(); }
+  catch(e){ /* já estava aberta: o onend reabre */ }
 }
+
 function pararEscuta(){
-  if(rec){ try{ rec.onend=null; rec.stop(); }catch(e){} rec=null; }
-  const b=$('#dtMic'); if(b) b.classList.remove('ouvindo');
-  const d=$('#dtDica'); if(d) d.innerHTML='Pode falar mais, corrigir o texto na mão, ou montar a lista.';
+  ouvindo=false;
+  if(rec){ try{ rec.stop(); }catch(e){ rec=null; encerraEscuta(); } }
+  else encerraEscuta();
+}
+
+function encerraEscuta(){
+  ouvindo=false; rec=null;
+  falaBase=(falaBase+falaSessao).trim(); falaSessao='';
+  falaFinal=falaBase;
+  escreveCampo('');
+  pintaMic();
+  if(!ouviuAlgo && !textoDoCampo()) avisaNadaOuvido();
+}
+
+function avisaNadaOuvido(){
+  const causa={
+    'not-allowed':['O microfone está bloqueado','Toque no cadeado ao lado do endereço e libere o microfone para este site. Se abriu pelo ícone na tela de início, tente pelo navegador.'],
+    'service-not-allowed':['O microfone está bloqueado','Libere o microfone para este site nas configurações do navegador.'],
+    'audio-capture':['Não achei microfone','Este aparelho não disponibilizou um microfone para o navegador.'],
+    'network':['Sem internet','O ditado manda o áudio para fora do aparelho, então precisa de conexão.'],
+  }[erroEscuta]||['Não consegui ouvir','Fale mais perto do aparelho. Se não funcionar, escreva usando o microfone do próprio teclado — dá no mesmo.'];
+  const r=$('#dtResultado'); if(!r) return;
+  r.innerHTML='<div class="alert warn" style="margin-bottom:12px">'+ic('alert',17,'var(--warn)')+
+    '<div style="flex:1"><div class="at">'+esc(causa[0])+'</div><div class="ad">'+esc(causa[1])+'</div></div></div>'+
+    '<button class="btn ghost sm" id="dtEscrever" style="width:100%">'+ic('edit',16)+' Escrever no lugar</button>';
+  $('#dtEscrever').onclick=()=>{ r.innerHTML=''; const c=$('#dtOuvido'); c.focus();
+    const sel=window.getSelection(), rg=document.createRange();
+    rg.selectNodeContents(c); rg.collapse(false); sel.removeAllRanges(); sel.addRange(rg); };
 }
 
 function montarDaFala(){
@@ -2509,7 +2560,7 @@ function montarDaFala(){
     e.currentTarget.closest('.achado').remove();
     if(!achadosAtuais.length) $('#dtResultado').innerHTML='';
   });
-  $('#dtLimpar').onclick=()=>{ falaFinal=''; achadosAtuais=[];
+  $('#dtLimpar').onclick=()=>{ falaFinal=''; falaBase=''; falaSessao=''; achadosAtuais=[];
     $('#dtOuvido').innerHTML=''; $('#dtResultado').innerHTML='';
     $('#dtMontar').classList.remove('hide'); };
   $('#dtGerar').onclick=()=>listaDaVoz(achadosAtuais.filter(a=>a.qtd>0));
