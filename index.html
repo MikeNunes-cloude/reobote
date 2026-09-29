@@ -2747,6 +2747,8 @@ async function reenviaPendentes(){
 function recebeSolicitacao(r,avisar){
   if(!r||!r.id) return false;
   const j=DB.solicitacoes.find(s=>s.id===r.id);
+  /* pedido já cancelado não precisa entrar em aparelho que nunca o viu */
+  if(!j && r.status==='cancelada') return false;
   const obj={id:r.id,unidade:r.unidade,unidade_nome:r.unidade_nome,quem:r.quem,obs:r.obs,
     itens:r.itens||[],status:r.status||'nova',criado_em:r.criado_em,naNuvem:true};
   if(j){
